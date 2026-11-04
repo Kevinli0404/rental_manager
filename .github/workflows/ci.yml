@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # Flutter 版本以 .fvmrc 為準，跟本機開發用同一版。
+      - name: 讀取 .fvmrc 的 Flutter 版本
+        id: fvmrc
+        run: echo "flutter-version=$(jq -r '.flutter' .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvmrc.outputs.flutter-version }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
