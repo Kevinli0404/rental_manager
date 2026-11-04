@@ -81,14 +81,17 @@ drift_schemas/         drift schema 快照（migration 測試用）
 | 表 | 欄位 |
 |---|---|
 | `properties` | name、address、note |
-| `inspections` | propertyId、type（moveIn／moveOut）、status（draft／signed）、inspectedOn、landlordName、tenantName、layoutJson（空間配置快照，JSON 字串）、baseInspectionId（退租對照的入住紀錄；沒有對照為 null）、signedAt |
+| `inspections` | propertyId、type（moveIn／moveOut）、status（draft／signed）、inspectedOn、landlordName、tenantName、layout（空間配置快照；SQL 欄位 `layout_json` 存 JSON 字串，程式裡由 TypeConverter 轉成 `Layout`）、baseInspectionId（退租對照的入住紀錄；沒有對照為 null）、signedAt |
 | `item_results` | inspectionId、roomKey（空間配置裡的空間 key）、itemKey、condition（good／damaged／missing／notApplicable，未填為 null）、note；(inspectionId, roomKey, itemKey) 不可重複 |
 | `photos` | inspectionId、roomKey、itemKey、relativePath |
 | `signatures` | inspectionId、role（landlord／tenant）、relativePath、signedAt；(inspectionId, role) 不可重複 |
 
 - enum 一律存成文字（drift 的 `textEnum`），不要存 index，避免 enum 調整順序時資料錯亂。
-- 時間一律存 UTC，顯示時才轉成當地時間。
+- 時間一律存 UTC，顯示時才轉成當地時間；資料庫裡存成 ISO-8601 文字（D-014）。
 - `inspectedOn` 只存日期（`YYYY-MM-DD` 文字），不做時區轉換。
+- 可以不填的文字欄位（地址、備註、姓名）存空字串，不存 null。
+- 開啟 SQLite 的外鍵檢查（`PRAGMA foreign_keys = ON`），`propertyId`、`inspectionId`、`baseInspectionId` 都參照對應的表。
+- 資料表定義在 `lib/core/database/tables/`，共同欄位用 `SyncColumns` mixin。
 
 ## 範本與空間配置
 
@@ -112,7 +115,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 }
 ```
 
-空間配置（存在 `inspections.layoutJson`）是這筆點交實際有的空間：
+空間配置（存在 `inspections.layout_json`）是這筆點交實際有的空間：
 
 ```json
 {
@@ -164,6 +167,8 @@ drift_schemas/         drift schema 快照（migration 測試用）
 
 - 每次改資料表：`schemaVersion` 加 1，在 `onUpgrade` 寫對應的 migration。
 - 依 drift 官方的 make-migrations 流程，把 schema 快照匯出到 `drift_schemas/` 並產生 migration 測試，確認舊版資料升級後正確。
+  - 指令：`fvm dart run drift_dev make-migrations`（設定在 `build.yaml`），測試放在 `test/drift/`。
+  - drift 要有兩個以上版本才會產生 migration 測試；`test/drift/rental_manager/schema_test.dart` 另外檢查「新安裝時建出的結構」和最新快照一致。升版後要把它改成比對新的版本。
 - 還沒有真實使用者資料之前，schema 可以直接改；有了之後一律走 migration。
 
 ## 測試

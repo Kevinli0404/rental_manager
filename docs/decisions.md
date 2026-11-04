@@ -108,3 +108,16 @@
 - 沒採用的做法：產生檔不進版控，CI 和每個人自己跑 build_runner。
 - 影響：改了來源卻忘了重跑，產生檔會跟來源不一致；之後如果發生，再考慮在 CI 加檢查。
 
+## D-014 時間存成 ISO-8601 文字
+- 日期：2026-11-04
+- 決定：drift 開啟 `store_date_time_values_as_text`，`createdAt`、`updatedAt`、`deletedAt`、`signedAt` 在資料庫裡存成 ISO-8601 文字（例如 `2026-11-04T03:20:05.123Z`）。
+- 原因：drift 預設存 Unix 時間（整數秒），會丟掉毫秒；存文字保留毫秒和 UTC 標記，直接看資料庫也看得懂。第二階段和 Supabase 同步時，用 `updatedAt` 判斷哪邊比較新，精度越高越好。
+- 沒採用的做法：drift 預設的整數秒。
+- 影響：這個設定改了要寫 migration 轉換舊資料，所以一開始就決定。
+
+## D-015 drift 產生的 schema 測試輔助檔不做靜態分析
+- 日期：2026-11-04
+- 決定：`analysis_options.yaml` 排除 `test/drift/*/generated/**`。
+- 原因：這些檔案由 `drift_dev` 產生、不能手改；檔頭已經關掉 lint，但 `strict-raw-types` 是分析器的語言檢查，檔頭關不掉。其他產生檔（`*.g.dart`、`*.freezed.dart`）在目前的規則下沒有問題，照常分析（延續 D-012 的評估）。
+- 沒採用的做法：關掉整個專案的 `strict-raw-types`；手改產生檔（下次產生就被蓋掉）。
+- 影響：只排除這一個資料夾，自己寫的程式碼和測試仍然完整檢查。

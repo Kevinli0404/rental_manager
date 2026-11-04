@@ -11,6 +11,9 @@ analyzer:
     - build/**
     - android/**
     - ios/**
+    # drift_dev schema generate 產生的 migration 測試輔助檔：檔頭已經關掉 lint，
+    # 但 strict-raw-types 是分析器的語言檢查，關不掉，又不能手改（D-012）。
+    - test/drift/*/generated/**
 
 linter:
   rules:
