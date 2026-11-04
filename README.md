@@ -9,6 +9,7 @@
 ## 開發環境
 
 - [fvm](https://fvm.app/)：Flutter 版本以 [`.fvmrc`](.fvmrc) 為準
+- VS Code：[`.vscode/settings.json`](.vscode/settings.json) 指定使用 fvm 的 SDK（`.fvm/flutter_sdk`，執行 `fvm install` 後才會出現）
 - iOS：Xcode
 - Android：Android Studio（Android SDK）
 
