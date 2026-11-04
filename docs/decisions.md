@@ -93,3 +93,10 @@
 - 原因：如果用「bedroom-2」這種流水號，刪掉再新增會拿到同一個 key，可能對到已刪除的舊資料。
 - 沒採用的做法：依空間類型編流水號當 key。
 - 影響：畫面上的「臥室 2」只是顯示名稱，跟 key 無關。
+
+## D-012 lint 用 flutter_lints 再加嚴
+- 日期：2026-11-04
+- 決定：以 `flutter create` 內建的 flutter_lints 為基礎，在 `analysis_options.yaml` 打開 `strict-casts`、`strict-inference`、`strict-raw-types`，另外加上非同步、型別、錯誤處理相關的規則（例如 `unawaited_futures`、`avoid_dynamic_calls`、`only_throw_errors`）。
+- 原因：不用新增套件，每一條加上去的規則都寫得出理由；自動儲存和資料庫 watch 會大量用到 Future、Stream，漏 await 或忘了取消訂閱都很難查，要靠 lint 先擋。
+- 沒採用的做法：very_good_analysis（規則更完整，但要多一個套件，規則數量多，之後產生檔和測試可能要另外排除）。
+- 影響：`fvm flutter analyze` 要維持 0 issue；之後加入 build_runner 時，要評估產生檔是否從分析中排除。

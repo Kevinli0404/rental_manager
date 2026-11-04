@@ -62,6 +62,8 @@ test/                  結構對應 lib/
 drift_schemas/         drift schema 快照（migration 測試用）
 ```
 
+- 上面列到的資料夾先建好，還沒有檔案的放 `.gitkeep` 佔位；放進第一個檔案時把 `.gitkeep` 刪掉。
+- 功能底下的子資料夾（`pages/`、`providers/` 等）第一次用到時才建立。
 
 ## 資料表
 

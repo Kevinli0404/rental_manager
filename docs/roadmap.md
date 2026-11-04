@@ -8,8 +8,8 @@
 - [x] 在 `rental_manager` 資料夾裡執行 `fvm flutter create --project-name rental_manager --org <自己的 org> .`；org 用自己的網域或 GitHub 帳號，不要用公司的
 - [x] 用 fvm 釘住 Flutter 版本（`.fvmrc`）
 - [x] App 顯示名稱設為「Rental Manager」（iOS 的 `CFBundleDisplayName`、Android 的 `android:label`）
-- [ ] lint 設定（`analysis_options.yaml`），`fvm flutter analyze` 0 issue
-- [ ] 建立資料夾結構（見 `architecture.md`）
+- [x] lint 設定（`analysis_options.yaml`），`fvm flutter analyze` 0 issue
+- [x] 建立資料夾結構（見 `architecture.md`）
 - [ ] GitHub Actions：每次 push 跑 analyze 和 test
 - [ ] README 初版，包含「我怎麼使用 AI」一段
 
