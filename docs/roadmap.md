@@ -10,7 +10,7 @@
 - [x] App 顯示名稱設為「Rental Manager」（iOS 的 `CFBundleDisplayName`、Android 的 `android:label`）
 - [x] lint 設定（`analysis_options.yaml`），`fvm flutter analyze` 0 issue
 - [x] 建立資料夾結構（見 `architecture.md`）
-- [ ] GitHub Actions：每次 push 跑 analyze 和 test
+- [x] GitHub Actions：每次 push 跑 analyze 和 test
 - [x] README 初版，包含「我怎麼使用 AI」一段
 
 驗收：空白 App 能在模擬器跑起來，主畫面顯示「Rental Manager」，CI 通過。

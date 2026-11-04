@@ -1,5 +1,7 @@
 # Rental Manager（租賃管理平台）
 
+[![CI](https://github.com/Kevinli0404/rental_manager/actions/workflows/ci.yml/badge.svg)](https://github.com/Kevinli0404/rental_manager/actions/workflows/ci.yml)
+
 房東和房客在入住、退租時，用手機逐項檢查房屋狀況、拍照、雙方簽名；退租時對照入住紀錄，現場產生 PDF 點交單。
 
 第一版只做點交，而且全部離線、資料只存在裝置上。目前還在開發中，進度見 [docs/roadmap.md](docs/roadmap.md)。
@@ -13,7 +15,7 @@
 ## 開始
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Kevinli0404/rental_manager.git
 cd rental_manager
 fvm install
 fvm flutter pub get
