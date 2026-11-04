@@ -92,6 +92,10 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - 可以不填的文字欄位（地址、備註、姓名）存空字串，不存 null。
 - 開啟 SQLite 的外鍵檢查（`PRAGMA foreign_keys = ON`），`propertyId`、`inspectionId`、`baseInspectionId` 都參照對應的表。
 - 資料表定義在 `lib/core/database/tables/`，共同欄位用 `SyncColumns` mixin。
+- DAO 在 `lib/core/database/daos/`：
+  - 新增資料時，id 用 `AppDatabase.newId()`（UUID v4），時間用 `AppDatabase.nowUtc()`；測試可以傳入固定的 `clock`。
+  - 讀取一律用 watch 查詢，並排除 `deletedAt` 不是 null 的資料。
+  - 項目結果依 (inspectionId, roomKey, itemKey) 新增或更新（upsert）；狀況、備註分開寫入，只更新該欄位和 `updatedAt`。
 
 ## 範本與空間配置
 
