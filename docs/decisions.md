@@ -100,3 +100,11 @@
 - 原因：不用新增套件，每一條加上去的規則都寫得出理由；自動儲存和資料庫 watch 會大量用到 Future、Stream，漏 await 或忘了取消訂閱都很難查，要靠 lint 先擋。
 - 沒採用的做法：very_good_analysis（規則更完整，但要多一個套件，規則數量多，之後產生檔和測試可能要另外排除）。
 - 影響：`fvm flutter analyze` 要維持 0 issue；之後加入 build_runner 時，要評估產生檔是否從分析中排除。
+
+## D-013 build_runner 產生的檔案一起 commit
+- 日期：2026-11-04
+- 決定：`*.g.dart`、`*.freezed.dart` 這類產生檔跟著原始碼一起 commit，不加進 `.gitignore`。
+- 原因：clone 下來或 CI 不用先跑 build_runner 就能 analyze 和測試；review 時看得到產生結果的變化。`CLAUDE.md` 的完成定義也要求改了來源就要重跑 build_runner。
+- 沒採用的做法：產生檔不進版控，CI 和每個人自己跑 build_runner。
+- 影響：改了來源卻忘了重跑，產生檔會跟來源不一致；之後如果發生，再考慮在 CI 加檢查。
+

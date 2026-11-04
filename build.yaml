@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # 巢狀物件（空間、項目）也要轉成 Map，toJson 的結果才能直接比對與存檔。
+          explicit_to_json: true

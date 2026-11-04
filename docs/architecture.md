@@ -139,6 +139,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - 項目 `key` 沿用範本的 key。
 - 退租沿用入住的空間配置時，key 完全不變，所以能用 (roomKey, itemKey) 一對一對照。
 - 畫面和 PDF 都依空間配置顯示，不再回頭讀範本。
+- 範本、空間配置的 model 在 `lib/features/templates/data/`，用 freezed＋json_serializable 產生；`Layout.fromTemplate` 依範本產生空間配置。
 
 ## 檔案（照片、簽名）
 
