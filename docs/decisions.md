@@ -121,3 +121,10 @@
 - 原因：這些檔案由 `drift_dev` 產生、不能手改；檔頭已經關掉 lint，但 `strict-raw-types` 是分析器的語言檢查，檔頭關不掉。其他產生檔（`*.g.dart`、`*.freezed.dart`）在目前的規則下沒有問題，照常分析（延續 D-012 的評估）。
 - 沒採用的做法：關掉整個專案的 `strict-raw-types`；手改產生檔（下次產生就被蓋掉）。
 - 影響：只排除這一個資料夾，自己寫的程式碼和測試仍然完整檢查。
+
+## D-016 repository 只在需要時才加
+- 日期：2026-11-04
+- 決定：provider 可以直接呼叫 DAO。只有要處理檔案（照片、簽名），或商業規則要組合好幾個 DAO 時，才加 repository。刪除物件時連帶刪除點交紀錄，用 DAO 裡的交易處理。
+- 原因：T2 的物件只有新增、修改、讀取和刪除，加一層 repository 幾乎都是轉呼叫 DAO，徒增檔案和測試。drift 的 DAO 本身就能宣告多張表並開交易。
+- 沒採用的做法：照原本的分層，provider 一律透過 repository。
+- 影響：`architecture.md` 的分層改成「repository 需要時才加」。之後加 repository 時，同一個功能的寫入都改走 repository，不要一半走 DAO、一半走 repository。

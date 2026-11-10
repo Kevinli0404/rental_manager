@@ -28,12 +28,13 @@ pages / widgets（畫面）
       ↓ 只透過 provider 取資料、呼叫動作
 providers（Riverpod）
       ↓
-repositories（商業規則、交易、檔案處理）
+repositories（需要時才加：檔案處理、跨 DAO 的商業規則）
       ↓
 daos（drift）＋ file_store（照片、簽名檔案）
 ```
 
 - 畫面不直接碰 DAO 或檔案。
+- repository 只在需要時才加：要處理檔案，或商業規則要組合好幾個 DAO 時。單純的讀寫、單一 DAO 裡就能完成的交易（例如刪除物件時連帶刪除點交紀錄），provider 直接呼叫 DAO（D-016）。
 - 商業規則（狀態轉換、簽名前檢查、刪除規則、退租對照）放在 `features/inspections/rules/` 這類獨立的規則類別或純函式，要能單獨寫單元測試。
 - 讀取用 drift 的 watch 查詢配 StreamProvider，資料一改畫面就自動更新。
 - 寫入動作放在 Notifier 的方法裡，例如 `InspectionController.setCondition(...)`。
@@ -95,6 +96,8 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - DAO 在 `lib/core/database/daos/`：
   - 新增資料時，id 用 `AppDatabase.newId()`（UUID v4），時間用 `AppDatabase.nowUtc()`；測試可以傳入固定的 `clock`。
   - 讀取一律用 watch 查詢，並排除 `deletedAt` 不是 null 的資料。
+  - 修改、刪除時找不到資料（不存在或已刪除）就丟出 `StateError`，不默默略過。
+  - 軟刪除同時更新 `updatedAt`。刪除物件時，在同一個交易裡把底下還沒刪除的點交紀錄一起軟刪除。
   - 項目結果依 (inspectionId, roomKey, itemKey) 新增或更新（upsert）；狀況、備註分開寫入，只更新該欄位和 `updatedAt`。
 
 ## 範本與空間配置
