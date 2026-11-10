@@ -7,7 +7,7 @@ import '../../../core/database/database.dart';
 import '../providers/property_list_provider.dart';
 import '../providers/property_provider.dart';
 
-/// 物件詳情：標題是名稱，下面是地址和備註；右上角選單可以刪除。
+/// 物件詳情：標題是名稱，下面是地址和備註；右上角選單可以編輯、刪除。
 ///
 /// 點交紀錄列表在 T3 加上（product.md「頁面與路由」）。
 class PropertyDetailPage extends ConsumerWidget {
@@ -24,14 +24,18 @@ class PropertyDetailPage extends ConsumerWidget {
       appBar: AppBar(
         title: loaded == null ? null : Text(loaded.name),
         actions: [
-          // 推論：刪除放在右上角選單，不直接放按鈕，避免誤觸。規格沒寫版面。
+          // 推論：編輯、刪除放在右上角選單，刪除不直接放按鈕，避免誤觸。規格沒寫版面。
           if (loaded != null)
             PopupMenuButton<_MenuAction>(
               tooltip: '更多',
               onSelected: (action) => switch (action) {
+                _MenuAction.edit => context.go(
+                  AppRoutes.editProperty(loaded.id),
+                ),
                 _MenuAction.delete => _confirmAndDelete(context, ref, loaded),
               },
               itemBuilder: (context) => const [
+                PopupMenuItem(value: _MenuAction.edit, child: Text('編輯')),
                 PopupMenuItem(value: _MenuAction.delete, child: Text('刪除')),
               ],
             ),
@@ -49,7 +53,7 @@ class PropertyDetailPage extends ConsumerWidget {
   }
 }
 
-enum _MenuAction { delete }
+enum _MenuAction { edit, delete }
 
 /// 確認一次就刪除（product.md「刪除規則」），然後回到列表。
 ///

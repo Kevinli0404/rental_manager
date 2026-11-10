@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/properties/pages/edit_property_page.dart';
 import '../features/properties/pages/new_property_page.dart';
 import '../features/properties/pages/property_detail_page.dart';
 import '../features/properties/pages/property_list_page.dart';
@@ -10,6 +11,8 @@ abstract final class AppRoutes {
   static const propertyList = '/';
   static const newProperty = '/properties/new';
   static String propertyDetail(String propertyId) => '/properties/$propertyId';
+  static String editProperty(String propertyId) =>
+      '/properties/$propertyId/edit';
 }
 
 /// 路由照路徑巢狀排列，`context.go` 時依路徑建立返回堆疊。
@@ -32,6 +35,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'properties/:pid',
             builder: (context, state) =>
                 PropertyDetailPage(propertyId: state.pathParameters['pid']!),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                builder: (context, state) =>
+                    EditPropertyPage(propertyId: state.pathParameters['pid']!),
+              ),
+            ],
           ),
         ],
       ),

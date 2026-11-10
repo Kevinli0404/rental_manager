@@ -32,6 +32,24 @@ class PropertyList extends StreamNotifier<List<Property>> {
         );
   }
 
+  /// 修改物件；跟 [create] 一樣，存檔前去掉前後空白。
+  Future<void> edit({
+    required String id,
+    required String name,
+    required String address,
+    required String note,
+  }) async {
+    await ref
+        .read(databaseProvider)
+        .propertiesDao
+        .updateProperty(
+          id: id,
+          name: name.trim(),
+          address: address.trim(),
+          note: note.trim(),
+        );
+  }
+
   /// 軟刪除物件，底下的點交紀錄一起刪除（見 `PropertiesDao.deleteProperty`）。
   Future<void> delete(String id) async {
     await ref.read(databaseProvider).propertiesDao.deleteProperty(id);
