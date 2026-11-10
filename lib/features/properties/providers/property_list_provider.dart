@@ -31,4 +31,9 @@ class PropertyList extends StreamNotifier<List<Property>> {
           note: note.trim(),
         );
   }
+
+  /// 軟刪除物件，底下的點交紀錄一起刪除（見 `PropertiesDao.deleteProperty`）。
+  Future<void> delete(String id) async {
+    await ref.read(databaseProvider).propertiesDao.deleteProperty(id);
+  }
 }

@@ -75,6 +75,7 @@ class _PropertyListView extends StatelessWidget {
         return ListTile(
           title: Text(property.name),
           subtitle: property.address.isEmpty ? null : Text(property.address),
+          onTap: () => context.go(AppRoutes.propertyDetail(property.id)),
         );
       },
     );

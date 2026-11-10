@@ -135,3 +135,10 @@
 - 原因：riverpod_generator 最新版（4.0.9）要求 `build` <5，專案的 build_runner 2.17.1 需要 build 5.0.x，兩者裝不在一起；要用 codegen 就得把 build_runner 降版，它還會帶進 prerelease 的 riverpod_analyzer_utils（1.0.0-dev.12）。目前 provider 很少，手寫只多幾行型別宣告。
 - 沒採用的做法：降版 build_runner 來配合 riverpod_generator。
 - 影響：`architecture.md` 的技術選擇改成手寫 provider。riverpod_generator 支援 build 5 之後可以再評估；要換就一次全部換，不要手寫和 codegen 混用。
+
+## D-018 刪除目前頁面的資料時，等頁面退場後才寫入
+- 日期：2026-11-05
+- 決定：在詳情頁刪除自己顯示的資料（例如物件）時，先 `context.go` 回上一層，等這頁的退場動畫結束（`ModalRoute.completed`）才寫入資料庫。刪除失敗時用事先取出的 `ScaffoldMessenger` 在上一層顯示錯誤。
+- 原因：畫面用 watch 查詢，資料一改就重畫；退場動畫中的頁面還在畫面上，也會跟著重畫。先刪除再離開，或離開後馬上刪除，退場動畫（iOS 是 0.5 秒）中都會閃過「找不到這個物件」。widget test 逐格檢查過這個情況。
+- 沒採用的做法：詳情頁記住最後一次讀到的資料，查詢變成 null 時繼續顯示舊資料（每個查詢都要各自處理，T3 加上點交紀錄列表後也會一起變空）；接受閃一下。
+- 影響：刪除會晚一個退場動畫的時間才寫入；這段時間關掉 App 的話不會刪除。T3 刪除點交紀錄時照同樣的做法。
