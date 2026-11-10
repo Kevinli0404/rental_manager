@@ -128,3 +128,10 @@
 - 原因：T2 的物件只有新增、修改、讀取和刪除，加一層 repository 幾乎都是轉呼叫 DAO，徒增檔案和測試。drift 的 DAO 本身就能宣告多張表並開交易。
 - 沒採用的做法：照原本的分層，provider 一律透過 repository。
 - 影響：`architecture.md` 的分層改成「repository 需要時才加」。之後加 repository 時，同一個功能的寫入都改走 repository，不要一半走 DAO、一半走 repository。
+
+## D-017 provider 手寫，不用 riverpod codegen
+- 日期：2026-11-05
+- 決定：用 flutter_riverpod 3 手寫 provider（`Provider`、`StreamNotifierProvider` 等），不加 riverpod_annotation、riverpod_generator。
+- 原因：riverpod_generator 最新版（4.0.9）要求 `build` <5，專案的 build_runner 2.17.1 需要 build 5.0.x，兩者裝不在一起；要用 codegen 就得把 build_runner 降版，它還會帶進 prerelease 的 riverpod_analyzer_utils（1.0.0-dev.12）。目前 provider 很少，手寫只多幾行型別宣告。
+- 沒採用的做法：降版 build_runner 來配合 riverpod_generator。
+- 影響：`architecture.md` 的技術選擇改成手寫 provider。riverpod_generator 支援 build 5 之後可以再評估；要換就一次全部換，不要手寫和 codegen 混用。

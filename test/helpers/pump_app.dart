@@ -1,0 +1,47 @@
+import 'package:drift/drift.dart' show DatabaseConnection;
+import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:rental_manager/app/app.dart';
+import 'package:rental_manager/core/database/database.dart';
+import 'package:rental_manager/core/database/database_provider.dart';
+
+/// 用記憶體資料庫啟動整個 App（含路由），停在首頁。
+///
+/// 回傳資料庫，讓測試準備資料或檢查寫入結果；[overrides] 用來換掉其他 provider。
+Future<AppDatabase> pumpApp(
+  WidgetTester tester, {
+  List<Override> overrides = const [],
+}) async {
+  // 停止監看時立刻關閉查詢。drift 預設會多等一輪事件迴圈，留下計時器，
+  // 測試結束時 flutter_test 會判定為殘留的計時器而失敗。
+  final database = AppDatabase(
+    DatabaseConnection(
+      NativeDatabase.memory(),
+      closeStreamsSynchronously: true,
+    ),
+  );
+
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        // 資料庫跟 App 一樣由 ProviderScope 關閉，不用 addTearDown。
+        // 測試失敗時 flutter_test 不會拆掉畫面，被蓋住的頁面（例如新增頁底下的列表）
+        // 的監看查詢還在暫停中；這時在 tearDown 關資料庫，會一直等不到那個查詢結束，
+        // 測試就卡住。ProviderScope 被拆掉時（測試通過時，或失敗後下一個測試開始時），
+        // Riverpod 會先取消監看，最後才處理資料庫。
+        databaseProvider.overrideWith((ref) {
+          ref.onDispose(database.close);
+          return database;
+        }),
+        ...overrides,
+      ],
+      // 測試裡讀取失敗就直接顯示錯誤，不自動重試（重試會留下計時器）。
+      retry: (retryCount, error) => null,
+      child: const RentalManagerApp(),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return database;
+}

@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// App 的根元件。
-///
-/// T0 只有一個空白主畫面；路由（go_router）和主題之後的 task 再加。
-class RentalManagerApp extends StatelessWidget {
+import 'router.dart';
+
+/// App 的根元件；上層要有 ProviderScope（見 `main.dart`）。
+class RentalManagerApp extends ConsumerWidget {
   const RentalManagerApp({super.key});
 
   static const String title = 'Rental Manager';
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: title,
-      home: Scaffold(appBar: AppBar(title: const Text(title))),
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

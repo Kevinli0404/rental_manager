@@ -4,7 +4,7 @@
 
 | 用途 | 套件 |
 |---|---|
-| 狀態管理 | flutter_riverpod、riverpod_annotation、riverpod_generator（Riverpod 3，codegen） |
+| 狀態管理 | flutter_riverpod（Riverpod 3，手寫 provider，不用 codegen，D-017） |
 | 路由 | go_router |
 | 本機資料庫 | drift、drift_flutter |
 | 不可變資料類別、JSON | freezed、json_serializable（只用在範本、空間配置這類需要的地方） |
@@ -93,6 +93,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - 可以不填的文字欄位（地址、備註、姓名）存空字串，不存 null。
 - 開啟 SQLite 的外鍵檢查（`PRAGMA foreign_keys = ON`），`propertyId`、`inspectionId`、`baseInspectionId` 都參照對應的表。
 - 資料表定義在 `lib/core/database/tables/`，共同欄位用 `SyncColumns` mixin。
+- 資料庫連線由 `databaseProvider`（`lib/core/database/database_provider.dart`）提供：App 用 drift_flutter 開 Documents 目錄裡的檔案，ProviderScope 結束時關閉；測試用 `overrideWithValue` 換成記憶體資料庫。
 - DAO 在 `lib/core/database/daos/`：
   - 新增資料時，id 用 `AppDatabase.newId()`（UUID v4），時間用 `AppDatabase.nowUtc()`；測試可以傳入固定的 `clock`。
   - 讀取一律用 watch 查詢，並排除 `deletedAt` 不是 null 的資料。
@@ -185,7 +186,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 | DAO、repository | 用 `NativeDatabase.memory()` 的記憶體資料庫 |
 | 規則（狀態轉換、簽名前檢查、刪除規則） | 純單元測試 |
 | 退租對照（找入住紀錄、判斷變差） | 純單元測試 |
-| 重要畫面（點交頁的唯讀切換、簽名前檢查的提示） | widget test |
+| 重要畫面（點交頁的唯讀切換、簽名前檢查的提示） | widget test：用 `test/helpers/pump_app.dart` 啟動整個 App（含路由），資料庫換成記憶體資料庫 |
 | 資料庫升版 | drift 的 migration 測試 |
 
 ## 為第二階段（Supabase 同步）預先遵守的規則
