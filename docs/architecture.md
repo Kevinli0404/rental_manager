@@ -6,6 +6,7 @@
 |---|---|
 | 狀態管理 | flutter_riverpod（Riverpod 3，手寫 provider，不用 codegen，D-017） |
 | 路由 | go_router |
+| 語系 | flutter_localizations（只用繁體中文 zh_TW，D-019） |
 | 本機資料庫 | drift、drift_flutter |
 | 不可變資料類別、JSON | freezed、json_serializable（只用在範本、空間配置這類需要的地方） |
 | ID | uuid |
