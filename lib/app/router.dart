@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/inspections/pages/inspection_page.dart';
+import '../features/inspections/pages/inspection_rooms_page.dart';
 import '../features/properties/pages/edit_property_page.dart';
 import '../features/properties/pages/new_property_page.dart';
 import '../features/properties/pages/property_detail_page.dart';
@@ -16,6 +17,8 @@ abstract final class AppRoutes {
       '/properties/$propertyId/edit';
   static String inspection(String propertyId, String inspectionId) =>
       '/properties/$propertyId/inspections/$inspectionId';
+  static String inspectionRooms(String propertyId, String inspectionId) =>
+      '/properties/$propertyId/inspections/$inspectionId/rooms';
 }
 
 /// 路由照路徑巢狀排列，`context.go` 時依路徑建立返回堆疊。
@@ -48,6 +51,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: 'inspections/:iid',
                 builder: (context, state) =>
                     InspectionPage(inspectionId: state.pathParameters['iid']!),
+                routes: [
+                  GoRoute(
+                    path: 'rooms',
+                    builder: (context, state) => InspectionRoomsPage(
+                      inspectionId: state.pathParameters['iid']!,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

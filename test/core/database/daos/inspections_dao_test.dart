@@ -162,4 +162,238 @@ void main() {
       expect(row.deletedAt, now);
     });
   });
+
+  group('updateLayout', () {
+    test('把資料庫裡目前的配置交給 change，改完寫回並更新 updatedAt；其他紀錄不受影響', () async {
+      final id = await createMoveIn();
+      final otherId = await createMoveIn();
+      await db.inspectionsDao.updateLayout(
+        id,
+        (layout) => layout.renameRoom('bedroom', '主臥室'),
+      );
+      final changedAt = now.add(const Duration(hours: 1));
+      clockNow = changedAt;
+
+      Layout? received;
+      await db.inspectionsDao.updateLayout(id, (layout) {
+        received = layout;
+        return layout.renameRoom('bedroom', '${layout.rooms.single.name}（大）');
+      });
+
+      expect(received!.rooms.single.name, '主臥室');
+      final rows = await db.select(db.inspections).get();
+      final changed = rows.singleWhere((i) => i.id == id);
+      expect(changed.layout.rooms.single.name, '主臥室（大）');
+      expect(changed.layout.rooms.single.items, layout.rooms.single.items);
+      expect(changed.updatedAt, changedAt);
+      expect(changed.createdAt, now);
+      final other = rows.singleWhere((i) => i.id == otherId);
+      expect(other.layout, layout);
+      expect(other.updatedAt, now);
+    });
+
+    test('不存在或已刪除時丟出 StateError，資料不變', () async {
+      final id = await createMoveIn();
+      await db.inspectionsDao.deleteInspection(id);
+      clockNow = now.add(const Duration(hours: 1));
+
+      await expectLater(
+        db.inspectionsDao.updateLayout(
+          id,
+          (layout) => layout.renameRoom('bedroom', '主臥室'),
+        ),
+        throwsStateError,
+      );
+      await expectLater(
+        db.inspectionsDao.updateLayout('not-exist', (layout) => layout),
+        throwsStateError,
+      );
+      final row = await db.select(db.inspections).getSingle();
+      expect(row.layout, layout);
+      expect(row.updatedAt, now);
+    });
+
+    test('change 丟出的錯誤照樣往上丟，資料不變', () async {
+      final id = await createMoveIn();
+      clockNow = now.add(const Duration(hours: 1));
+
+      await expectLater(
+        db.inspectionsDao.updateLayout(
+          id,
+          (layout) => layout.renameRoom('bedroom', '  '),
+        ),
+        throwsArgumentError,
+      );
+      final row = await db.select(db.inspections).getSingle();
+      expect(row.layout, layout);
+      expect(row.updatedAt, now);
+    });
+  });
+
+  group('deleteRoom', () {
+    const twoRooms = Layout(
+      templateId: 'default-residence',
+      templateVersion: 1,
+      rooms: [
+        LayoutRoom(
+          key: 'bedroom',
+          typeKey: 'bedroom',
+          name: '臥室',
+          items: [LayoutItem(key: 'wall', name: '牆面')],
+        ),
+        LayoutRoom(
+          key: 'b2',
+          typeKey: 'bedroom',
+          name: '臥室 2',
+          items: [LayoutItem(key: 'wall', name: '牆面')],
+        ),
+      ],
+    );
+
+    Future<String> createTwoRooms() => db.inspectionsDao.createInspection(
+      propertyId: propertyId,
+      type: InspectionType.moveIn,
+      inspectedOn: '2026-11-04',
+      landlordName: '王房東',
+      layout: twoRooms,
+    );
+
+    Future<void> addResult(
+      String inspectionId,
+      String roomKey, {
+      DateTime? deletedAt,
+    }) {
+      return db
+          .into(db.itemResults)
+          .insert(
+            ItemResultsCompanion.insert(
+              id: db.newId(),
+              createdAt: now,
+              updatedAt: now,
+              inspectionId: inspectionId,
+              roomKey: roomKey,
+              itemKey: 'wall',
+              condition: const Value(ItemCondition.damaged),
+              deletedAt: Value(deletedAt),
+            ),
+          );
+    }
+
+    Future<void> addPhoto(
+      String inspectionId,
+      String roomKey, {
+      DateTime? deletedAt,
+    }) {
+      return db
+          .into(db.photos)
+          .insert(
+            PhotosCompanion.insert(
+              id: db.newId(),
+              createdAt: now,
+              updatedAt: now,
+              inspectionId: inspectionId,
+              roomKey: roomKey,
+              itemKey: 'wall',
+              relativePath: 'photos/$inspectionId/$roomKey.jpg',
+              deletedAt: Value(deletedAt),
+            ),
+          );
+    }
+
+    test('從配置拿掉空間，這個空間的項目結果和照片軟刪除；其他空間、其他點交紀錄的不受影響', () async {
+      final id = await createTwoRooms();
+      final otherId = await createTwoRooms();
+      for (final inspectionId in [id, otherId]) {
+        for (final roomKey in ['bedroom', 'b2']) {
+          await addResult(inspectionId, roomKey);
+          await addPhoto(inspectionId, roomKey);
+        }
+      }
+      final deletedAt = now.add(const Duration(hours: 1));
+      clockNow = deletedAt;
+
+      await db.inspectionsDao.deleteRoom(id, 'b2');
+
+      final inspections = await db.select(db.inspections).get();
+      final changed = inspections.singleWhere((i) => i.id == id);
+      expect(changed.layout.rooms.map((r) => r.key), ['bedroom']);
+      expect(changed.updatedAt, deletedAt);
+      final other = inspections.singleWhere((i) => i.id == otherId);
+      expect(other.layout, twoRooms);
+      expect(other.updatedAt, now);
+
+      bool isTarget(String inspectionId, String roomKey) =>
+          inspectionId == id && roomKey == 'b2';
+      final results = await db.select(db.itemResults).get();
+      expect(results, hasLength(4));
+      for (final r in results) {
+        final target = isTarget(r.inspectionId, r.roomKey);
+        expect(r.deletedAt, target ? deletedAt : isNull);
+        expect(r.updatedAt, target ? deletedAt : now);
+      }
+      final photos = await db.select(db.photos).get();
+      expect(photos, hasLength(4));
+      for (final p in photos) {
+        final target = isTarget(p.inspectionId, p.roomKey);
+        expect(p.deletedAt, target ? deletedAt : isNull);
+        expect(p.updatedAt, target ? deletedAt : now);
+      }
+    });
+
+    test('之前已經刪掉的結果和照片，保留原本的刪除時間', () async {
+      final id = await createTwoRooms();
+      await addResult(id, 'b2', deletedAt: now);
+      await addPhoto(id, 'b2', deletedAt: now);
+      clockNow = now.add(const Duration(hours: 1));
+
+      await db.inspectionsDao.deleteRoom(id, 'b2');
+
+      final result = await db.select(db.itemResults).getSingle();
+      expect(result.deletedAt, now);
+      expect(result.updatedAt, now);
+      final photo = await db.select(db.photos).getSingle();
+      expect(photo.deletedAt, now);
+      expect(photo.updatedAt, now);
+    });
+
+    test('只剩一個空間、空間不存在、點交紀錄不存在或已刪除時丟出 StateError，資料不變', () async {
+      final single = await createMoveIn();
+      await addResult(single, 'bedroom');
+      await addPhoto(single, 'bedroom');
+      final id = await createTwoRooms();
+      await addResult(id, 'b2');
+      await addPhoto(id, 'b2');
+      final deleted = await createTwoRooms();
+      await db.inspectionsDao.deleteInspection(deleted);
+      await addResult(deleted, 'b2');
+      clockNow = now.add(const Duration(hours: 1));
+
+      await expectLater(
+        db.inspectionsDao.deleteRoom(single, 'bedroom'),
+        throwsStateError,
+      );
+      await expectLater(
+        db.inspectionsDao.deleteRoom(id, 'nope'),
+        throwsStateError,
+      );
+      await expectLater(
+        db.inspectionsDao.deleteRoom(deleted, 'b2'),
+        throwsStateError,
+      );
+      await expectLater(
+        db.inspectionsDao.deleteRoom('not-exist', 'b2'),
+        throwsStateError,
+      );
+
+      final inspections = await db.select(db.inspections).get();
+      expect(inspections.singleWhere((i) => i.id == single).layout, layout);
+      expect(inspections.singleWhere((i) => i.id == id).layout, twoRooms);
+      expect(inspections.singleWhere((i) => i.id == deleted).layout, twoRooms);
+      expect(inspections.map((i) => i.updatedAt), everyElement(now));
+      final results = await db.select(db.itemResults).get();
+      expect(results.map((r) => r.deletedAt), everyElement(isNull));
+      final photos = await db.select(db.photos).get();
+      expect(photos.map((p) => p.deletedAt), everyElement(isNull));
+    });
+  });
 }

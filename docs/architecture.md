@@ -101,6 +101,8 @@ drift_schemas/         drift schema 快照（migration 測試用）
   - 修改、刪除時找不到資料（不存在或已刪除）就丟出 `StateError`，不默默略過。
   - 軟刪除同時更新 `updatedAt`。刪除物件時，在同一個交易裡把底下還沒刪除的點交紀錄一起軟刪除。
   - 項目結果依 (inspectionId, roomKey, itemKey) 新增或更新（upsert）；狀況、備註分開寫入，只更新該欄位和 `updatedAt`。
+  - 修改空間配置用 `InspectionsDao.updateLayout`：在交易裡讀出目前的配置、修改後寫回，不拿畫面上可能過時的配置去改。空間的新增、複製、改名稱、刪除寫在 `Layout` 的 extension（`lib/features/templates/data/layout.dart`）。
+  - 刪除空間用 `InspectionsDao.deleteRoom`：同一個交易裡把空間從配置拿掉，並把這個空間的項目結果和照片軟刪除（D-020）。
 
 ## 範本與空間配置
 

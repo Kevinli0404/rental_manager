@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../app/leave_then_delete.dart';
 import '../../../app/router.dart';
@@ -13,7 +14,7 @@ import '../providers/inspection_provider.dart';
 import '../widgets/inspection_labels.dart';
 
 /// 點交頁：上方是空間分頁，每個項目選狀況、填備註；底部固定顯示填寫進度
-/// （product.md「點交頁版面」）。草稿可以從右上角選單刪除。
+/// （product.md「點交頁版面」）。草稿可以從右上角選單管理空間、刪除。
 ///
 /// 每次變更都立即寫入，沒有儲存按鈕；備註停止輸入後才寫入（product.md 轉跳規則 4）。
 class InspectionPage extends ConsumerWidget {
@@ -65,11 +66,17 @@ class _InspectionScaffold extends ConsumerWidget {
         appBar: AppBar(
           title: Text(_title(inspection)),
           actions: [
-            // 只有草稿可以刪除；已簽名的要二次確認，在 T5 加上（roadmap）。
+            // 只有草稿可以管理空間、刪除；已簽名的要二次確認才能刪除，在 T5 加上（roadmap）。
             if (inspection.status == InspectionStatus.draft)
               PopupMenuButton<_MenuAction>(
                 tooltip: '更多',
                 onSelected: (action) => switch (action) {
+                  _MenuAction.manageRooms => context.go(
+                    AppRoutes.inspectionRooms(
+                      inspection.propertyId,
+                      inspection.id,
+                    ),
+                  ),
                   _MenuAction.delete => _confirmAndDelete(
                     context,
                     ref,
@@ -77,6 +84,10 @@ class _InspectionScaffold extends ConsumerWidget {
                   ),
                 },
                 itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _MenuAction.manageRooms,
+                    child: Text('管理空間'),
+                  ),
                   PopupMenuItem(value: _MenuAction.delete, child: Text('刪除')),
                 ],
               ),
@@ -97,6 +108,9 @@ class _InspectionScaffold extends ConsumerWidget {
             children: [
               for (final room in rooms)
                 _RoomItems(
+                  // 管理空間後分頁的順序會變；用空間 key 對應，保留下來的卡片
+                  // （見 _ItemCard）才不會被套到別的空間。
+                  key: ValueKey(room.key),
                   inspectionId: inspection.id,
                   room: room,
                   results: _byItem(value),
@@ -129,6 +143,7 @@ Map<_ItemKey, ItemResult> _byItem(List<ItemResult> results) {
 /// 一個空間的項目列表。
 class _RoomItems extends StatelessWidget {
   const _RoomItems({
+    super.key,
     required this.inspectionId,
     required this.room,
     required this.results,
@@ -355,7 +370,7 @@ class _Progress extends StatelessWidget {
   }
 }
 
-enum _MenuAction { delete }
+enum _MenuAction { manageRooms, delete }
 
 String _title(Inspection inspection) {
   return '${inspection.type.label} ${inspection.inspectedOn}';
