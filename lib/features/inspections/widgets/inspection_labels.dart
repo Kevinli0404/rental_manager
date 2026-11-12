@@ -15,3 +15,13 @@ extension InspectionStatusLabel on InspectionStatus {
     InspectionStatus.signed => '已簽名',
   };
 }
+
+/// 項目狀況在畫面上的名稱（product.md「項目狀況」）。
+extension ItemConditionLabel on ItemCondition {
+  String get label => switch (this) {
+    ItemCondition.good => '良好',
+    ItemCondition.damaged => '損壞',
+    ItemCondition.missing => '缺少',
+    ItemCondition.notApplicable => '不適用',
+  };
+}
