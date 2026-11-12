@@ -1,9 +1,13 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_manager/app/app.dart';
 import 'package:rental_manager/app/router.dart';
+import 'package:rental_manager/core/database/database.dart';
+import 'package:rental_manager/features/inspections/providers/inspection_list_provider.dart';
 import 'package:rental_manager/features/properties/providers/property_list_provider.dart';
+import 'package:rental_manager/features/templates/data/layout.dart';
 
 import '../../../helpers/pump_app.dart';
 
@@ -167,6 +171,156 @@ void main() {
     expect(find.textContaining('刪除失敗'), findsOneWidget);
     expect(find.textContaining('資料庫鎖住了'), findsOneWidget);
   });
+
+  group('點交紀錄列表', () {
+    Future<String> addInspection(
+      AppDatabase database,
+      String propertyId, {
+      required InspectionType type,
+      required String inspectedOn,
+    }) {
+      return database.inspectionsDao.createInspection(
+        propertyId: propertyId,
+        type: type,
+        inspectedOn: inspectedOn,
+        landlordName: '',
+        layout: const Layout(
+          templateId: 'default-residence',
+          templateVersion: 1,
+          rooms: [],
+        ),
+      );
+    }
+
+    Future<void> markAs(
+      AppDatabase database,
+      String id,
+      InspectionsCompanion changes,
+    ) {
+      return (database.update(
+        database.inspections,
+      )..where((i) => i.id.equals(id))).write(changes);
+    }
+
+    double topOf(WidgetTester tester, String text) {
+      return tester.getTopLeft(find.text(text)).dy;
+    }
+
+    testWidgets('沒有點交紀錄時顯示「還沒有點交紀錄」', (tester) async {
+      final database = await pumpApp(tester);
+      await database.propertiesDao.createProperty(name: '中山路公寓');
+      await tester.pumpAndSettle();
+      await openDetail(tester, '中山路公寓');
+
+      expect(find.text('還沒有點交紀錄'), findsOneWidget);
+      expect(find.byTooltip('新增點交'), findsOneWidget);
+    });
+
+    testWidgets('依點交日期新到舊，顯示類型、日期、狀態；不含已刪除和其他物件的', (tester) async {
+      final database = await pumpApp(tester);
+      final id = await database.propertiesDao.createProperty(name: '中山路公寓');
+      final other = await database.propertiesDao.createProperty(name: '民生社區套房');
+      await addInspection(
+        database,
+        id,
+        type: InspectionType.moveIn,
+        inspectedOn: '2026-01-15',
+      );
+      final signed = await addInspection(
+        database,
+        id,
+        type: InspectionType.moveOut,
+        inspectedOn: '2026-11-04',
+      );
+      await markAs(
+        database,
+        signed,
+        const InspectionsCompanion(status: Value(InspectionStatus.signed)),
+      );
+      final deleted = await addInspection(
+        database,
+        id,
+        type: InspectionType.moveIn,
+        inspectedOn: '2026-12-01',
+      );
+      await markAs(
+        database,
+        deleted,
+        InspectionsCompanion(deletedAt: Value(DateTime.utc(2026, 12, 2))),
+      );
+      await addInspection(
+        database,
+        other,
+        type: InspectionType.moveIn,
+        inspectedOn: '2026-06-01',
+      );
+      await tester.pumpAndSettle();
+      await openDetail(tester, '中山路公寓');
+
+      expect(find.text('還沒有點交紀錄'), findsNothing);
+      final moveOut = find.widgetWithText(ListTile, '2026-11-04');
+      expect(find.descendant(of: moveOut, matching: find.text('退租')), findsOne);
+      expect(
+        find.descendant(of: moveOut, matching: find.text('已簽名')),
+        findsOne,
+      );
+      final moveIn = find.widgetWithText(ListTile, '2026-01-15');
+      expect(find.descendant(of: moveIn, matching: find.text('入住')), findsOne);
+      expect(find.descendant(of: moveIn, matching: find.text('草稿')), findsOne);
+      expect(
+        topOf(tester, '2026-11-04'),
+        lessThan(topOf(tester, '2026-01-15')),
+      );
+      expect(find.text('2026-12-01'), findsNothing, reason: '已刪除');
+      expect(find.text('2026-06-01'), findsNothing, reason: '其他物件的');
+    });
+
+    testWidgets('點一筆點交紀錄進點交頁，返回回到詳情', (tester) async {
+      final database = await pumpApp(tester);
+      final id = await database.propertiesDao.createProperty(name: '中山路公寓');
+      await addInspection(
+        database,
+        id,
+        type: InspectionType.moveIn,
+        inspectedOn: '2026-01-15',
+      );
+      await tester.pumpAndSettle();
+      await openDetail(tester, '中山路公寓');
+
+      await tester.tap(find.widgetWithText(ListTile, '2026-01-15'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.text('入住 2026-01-15'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(appBarTitle, findsOneWidget);
+    });
+
+    testWidgets('讀取點交紀錄失敗時顯示錯誤，物件資料照常顯示', (tester) async {
+      final database = await pumpApp(
+        tester,
+        overrides: [
+          inspectionListProvider.overrideWith2(_BrokenInspectionList.new),
+        ],
+      );
+      await database.propertiesDao.createProperty(
+        name: '中山路公寓',
+        address: '台北市中山區中山北路一段 1 號',
+      );
+      await tester.pumpAndSettle();
+      await openDetail(tester, '中山路公寓');
+
+      expect(find.textContaining('讀取點交紀錄失敗'), findsOneWidget);
+      expect(find.textContaining('資料表損毀'), findsOneWidget);
+      expect(find.text('台北市中山區中山北路一段 1 號'), findsOneWidget);
+    });
+  });
 }
 
 /// 讀取照常，刪除時失敗。
@@ -175,4 +329,12 @@ class _FailingPropertyList extends PropertyList {
   Future<void> delete(String id) async {
     throw StateError('資料庫鎖住了');
   }
+}
+
+/// 讀取點交紀錄時失敗。
+class _BrokenInspectionList extends InspectionList {
+  _BrokenInspectionList(super.propertyId);
+
+  @override
+  Stream<List<Inspection>> build() => Stream.error(StateError('資料表損毀'));
 }

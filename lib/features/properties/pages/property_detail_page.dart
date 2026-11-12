@@ -4,12 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../core/database/database.dart';
+import '../../inspections/providers/inspection_list_provider.dart';
+import '../../inspections/widgets/inspection_labels.dart';
+import '../../inspections/widgets/new_inspection_sheet.dart';
 import '../providers/property_list_provider.dart';
 import '../providers/property_provider.dart';
 
-/// 物件詳情：標題是名稱，下面是地址和備註；右上角選單可以編輯、刪除。
-///
-/// 點交紀錄列表在 T3 加上（product.md「頁面與路由」）。
+/// 物件詳情：標題是名稱，下面是地址、備註和點交紀錄列表；右上角選單可以編輯、刪除，
+/// 右下角按鈕新增點交。
 class PropertyDetailPage extends ConsumerWidget {
   const PropertyDetailPage({super.key, required this.propertyId});
 
@@ -42,15 +44,32 @@ class PropertyDetailPage extends ConsumerWidget {
         ],
       ),
       body: switch (property) {
-        AsyncData(value: final property?) => _PropertyFields(
-          property: property,
-        ),
+        AsyncData(value: final property?) => _PropertyBody(property: property),
         AsyncData() => const Center(child: Text('找不到這個物件')),
         AsyncError(:final error) => Center(child: Text('讀取物件失敗：$error')),
         _ => const Center(child: CircularProgressIndicator()),
       },
+      // 推論：新增點交的按鈕一直顯示，沒有點交紀錄時列表只顯示文字，不另外放按鈕；
+      // 同一個畫面不放兩個新增按鈕，比照物件列表。
+      floatingActionButton: loaded == null
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _addInspection(context, loaded.id),
+              tooltip: '新增點交',
+              child: const Icon(Icons.add),
+            ),
     );
   }
+}
+
+/// 用底部選單建立點交草稿，建立後直接進點交頁（product.md 轉跳規則 2）。
+Future<void> _addInspection(BuildContext context, String propertyId) async {
+  final inspectionId = await showNewInspectionSheet(
+    context,
+    propertyId: propertyId,
+  );
+  if (inspectionId == null || !context.mounted) return;
+  context.go(AppRoutes.inspection(propertyId, inspectionId));
 }
 
 enum _MenuAction { edit, delete }
@@ -99,18 +118,55 @@ Future<void> _confirmAndDelete(
   }
 }
 
-class _PropertyFields extends StatelessWidget {
-  const _PropertyFields({required this.property});
+class _PropertyBody extends ConsumerWidget {
+  const _PropertyBody({required this.property});
 
   final Property property;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final inspections = ref.watch(inspectionListProvider(property.id));
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+
     return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      // 底部留空間，最後一列不會被右下角的按鈕蓋住。
+      padding: const EdgeInsets.only(top: 8, bottom: 88),
       children: [
         _Field(label: '地址', value: property.address),
         _Field(label: '備註', value: property.note),
+        const Divider(height: 32),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text('點交紀錄', style: theme.textTheme.titleSmall),
+        ),
+        ...switch (inspections) {
+          AsyncData(:final value) when value.isEmpty => [
+            ListTile(
+              title: Text('還沒有點交紀錄', style: TextStyle(color: muted)),
+            ),
+          ],
+          AsyncData(:final value) => [
+            for (final inspection in value)
+              ListTile(
+                title: Text(inspection.type.label),
+                subtitle: Text(inspection.inspectedOn),
+                trailing: Text(inspection.status.label),
+                onTap: () => context.go(
+                  AppRoutes.inspection(property.id, inspection.id),
+                ),
+              ),
+          ],
+          AsyncError(:final error) => [
+            ListTile(title: Text('讀取點交紀錄失敗：$error')),
+          ],
+          _ => [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        },
       ],
     );
   }

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,10 @@ Future<AppDatabase> pumpApp(
   WidgetTester tester, {
   List<Override> overrides = const [],
 }) async {
+  // 清掉上一個測試留下的資產快取（例如範本 JSON）。快取裡的 Future 是在上一個測試的
+  // 假時間 zone 裡建立的，這個測試再 await 它時，回呼會排進已經結束的 zone，永遠等不到。
+  rootBundle.clear();
+
   // 停止監看時立刻關閉查詢。drift 預設會多等一輪事件迴圈，留下計時器，
   // 測試結束時 flutter_test 會判定為殘留的計時器而失敗。
   final database = AppDatabase(

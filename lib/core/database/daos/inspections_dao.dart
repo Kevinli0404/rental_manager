@@ -39,6 +39,19 @@ class InspectionsDao extends DatabaseAccessor<AppDatabase>
     return id;
   }
 
+  /// 監看某個物件的點交紀錄（不含已刪除），依點交日期新到舊；同一天依建立時間新到舊。
+  ///
+  /// 推論：同一天依建立時間排序。規格只寫「新到舊」；同一天最後建立的通常是最新的一次。
+  Stream<List<Inspection>> watchInspections(String propertyId) {
+    return (select(inspections)
+          ..where((i) => i.propertyId.equals(propertyId) & i.deletedAt.isNull())
+          ..orderBy([
+            (i) => OrderingTerm.desc(i.inspectedOn),
+            (i) => OrderingTerm.desc(i.createdAt),
+          ]))
+        .watch();
+  }
+
   /// 依 id 監看點交紀錄；不存在或已刪除時是 null。
   Stream<Inspection?> watchInspection(String id) {
     return (select(inspections)
