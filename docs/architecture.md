@@ -165,7 +165,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - 路由集中在 `lib/app/router.dart`，路徑用 `AppRoutes` 的常數和方法產生（例如 `AppRoutes.propertyDetail(id)`），不在畫面裡手寫字串。
 - 主要轉跳用 `context.go`，依巢狀路徑建立返回堆疊；照片檢視這類疊在上面的頁面用 `context.push`。
 - 頁面參數只傳 ID，資料由 provider 依 ID 讀取。
-- 刪除目前這頁顯示的資料時，先轉跳離開，等這頁的退場動畫結束（`ModalRoute.of(context)!.completed`）才寫入資料庫（D-018）。
+- 刪除目前這頁顯示的資料時，先轉跳離開，等這頁的退場動畫結束（`ModalRoute.of(context)!.completed`）才寫入資料庫（D-018）。一律用 `leaveThenDelete`（`lib/app/leave_then_delete.dart`），失敗時它會在離開後的頁面顯示錯誤。
 
 ## PDF
 

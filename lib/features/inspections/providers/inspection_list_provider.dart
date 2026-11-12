@@ -46,4 +46,9 @@ class InspectionList extends StreamNotifier<List<Inspection>> {
           layout: Layout.fromTemplate(template),
         );
   }
+
+  /// 軟刪除點交紀錄（見 `InspectionsDao.deleteInspection`）。
+  Future<void> delete(String id) async {
+    await ref.read(databaseProvider).inspectionsDao.deleteInspection(id);
+  }
 }

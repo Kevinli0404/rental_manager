@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/leave_then_delete.dart';
 import '../../../app/router.dart';
 import '../../../core/database/database.dart';
 import '../../inspections/providers/inspection_list_provider.dart';
@@ -102,20 +103,13 @@ Future<void> _confirmAndDelete(
   );
   if (confirmed != true || !context.mounted) return;
 
-  // 先回到列表，等這頁的退場動畫結束、頁面關掉之後才刪除。這頁在退場動畫中
-  // 還會重畫，在那之前刪除的話，會閃過「找不到這個物件」。物件刪掉後會自動從列表消失。
-  // 離開後這頁的 context 和 ref 就不能用，要用的東西先取出來。
-  final route = ModalRoute.of(context)!;
+  // 回到列表後才刪除，物件刪掉後會自動從列表消失。
   final properties = ref.read(propertyListProvider.notifier);
-  final messenger = ScaffoldMessenger.of(context);
-  context.go(AppRoutes.propertyList);
-  await route.completed;
-  try {
-    await properties.delete(property.id);
-  } catch (error) {
-    // 推論：刪除失敗時停在列表、顯示錯誤，物件還在列表上，可以再試一次。
-    messenger.showSnackBar(SnackBar(content: Text('刪除失敗：$error')));
-  }
+  await leaveThenDelete(
+    context,
+    location: AppRoutes.propertyList,
+    delete: () => properties.delete(property.id),
+  );
 }
 
 class _PropertyBody extends ConsumerWidget {

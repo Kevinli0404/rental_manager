@@ -58,4 +58,21 @@ class InspectionsDao extends DatabaseAccessor<AppDatabase>
           ..where((i) => i.id.equals(id) & i.deletedAt.isNull()))
         .watchSingleOrNull();
   }
+
+  /// 軟刪除點交紀錄。
+  ///
+  /// 不存在或已刪除時丟出 [StateError]，不默默略過。項目結果、照片、簽名只會透過
+  /// 點交紀錄讀到，不逐筆標記（同 `PropertiesDao.deleteProperty`）。
+  Future<void> deleteInspection(String id) async {
+    final now = attachedDatabase.nowUtc();
+    final count =
+        await (update(
+          inspections,
+        )..where((i) => i.id.equals(id) & i.deletedAt.isNull())).write(
+          InspectionsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+    if (count == 0) {
+      throw StateError('點交紀錄不存在或已刪除：$id');
+    }
+  }
 }

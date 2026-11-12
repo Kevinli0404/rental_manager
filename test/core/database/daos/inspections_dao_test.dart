@@ -122,4 +122,44 @@ void main() {
       expect(await emitted, [0, 1]);
     });
   });
+
+  group('deleteInspection', () {
+    test('標記刪除時間並更新 updatedAt，之後查不到；其他紀錄不受影響', () async {
+      final deletedId = await createMoveIn();
+      final keptId = await createMoveIn();
+      final deletedAt = now.add(const Duration(hours: 1));
+      clockNow = deletedAt;
+
+      await db.inspectionsDao.deleteInspection(deletedId);
+
+      final rows = await db.select(db.inspections).get();
+      final deleted = rows.singleWhere((i) => i.id == deletedId);
+      expect(deleted.deletedAt, deletedAt);
+      expect(deleted.updatedAt, deletedAt);
+      final kept = rows.singleWhere((i) => i.id == keptId);
+      expect(kept.deletedAt, isNull);
+      expect(kept.updatedAt, now);
+
+      expect(await db.inspectionsDao.watchInspection(deletedId).first, isNull);
+      final listed = await db.inspectionsDao.watchInspections(propertyId).first;
+      expect(listed.map((i) => i.id), [keptId]);
+    });
+
+    test('不存在或已刪除時丟出 StateError，已刪除的刪除時間不變', () async {
+      final id = await createMoveIn();
+      await db.inspectionsDao.deleteInspection(id);
+      clockNow = now.add(const Duration(hours: 1));
+
+      await expectLater(
+        db.inspectionsDao.deleteInspection(id),
+        throwsStateError,
+      );
+      await expectLater(
+        db.inspectionsDao.deleteInspection('not-exist'),
+        throwsStateError,
+      );
+      final row = await db.select(db.inspections).getSingle();
+      expect(row.deletedAt, now);
+    });
+  });
 }
