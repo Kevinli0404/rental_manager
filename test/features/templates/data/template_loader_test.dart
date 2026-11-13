@@ -10,7 +10,7 @@ void main() {
 
       expect(template.id, 'default-residence');
       expect(template.name, '一般住宅');
-      expect(template.version, 1);
+      expect(template.version, 2);
       expect(template.rooms.map((r) => r.name), [
         '玄關',
         '客廳',
@@ -19,6 +19,25 @@ void main() {
         '臥室',
         '陽台',
       ]);
+    });
+
+    test('每類空間只列 1～2 個項目，共 10 個（D-023）', () async {
+      final template = await loadDefaultTemplate();
+
+      expect(
+        {
+          for (final room in template.rooms)
+            room.name: [for (final item in room.items) item.name],
+        },
+        {
+          '玄關': ['大門', '門鎖'],
+          '客廳': ['牆面', '冷氣'],
+          '廚房': ['流理台', '瓦斯爐'],
+          '浴室': ['馬桶', '水龍頭'],
+          '臥室': ['牆面'],
+          '陽台': ['欄杆'],
+        },
+      );
     });
 
     test('空間 key 不重複，每個空間的項目 key 不重複', () async {

@@ -206,9 +206,9 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     expect(listedRooms(tester), ['客廳', '臥室', '臥室 2', '陽台']);
     expect(
-      find.descendant(of: roomTile('臥室 2'), matching: find.text('11 個項目')),
+      find.descendant(of: roomTile('臥室 2'), matching: find.text('1 個項目')),
       findsOneWidget,
-      reason: '範本的臥室有 11 個項目',
+      reason: '範本的臥室有 1 個項目；原本的臥室有 2 個，代表項目是照範本建的',
     );
     final added = (await savedLayout(database)).rooms[2];
     expect(added.typeKey, 'bedroom');

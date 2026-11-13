@@ -1,18 +1,14 @@
 {
   "id": "default-residence",
   "name": "一般住宅",
-  "version": 1,
+  "version": 2,
   "rooms": [
     {
       "key": "entrance",
       "name": "玄關",
       "items": [
         { "key": "front_door", "name": "大門" },
-        { "key": "door_lock", "name": "門鎖" },
-        { "key": "shoe_cabinet", "name": "鞋櫃" },
-        { "key": "wall", "name": "牆面" },
-        { "key": "floor", "name": "地板" },
-        { "key": "light", "name": "燈具" }
+        { "key": "door_lock", "name": "門鎖" }
       ]
     },
     {
@@ -20,13 +16,6 @@
       "name": "客廳",
       "items": [
         { "key": "wall", "name": "牆面" },
-        { "key": "ceiling", "name": "天花板" },
-        { "key": "floor", "name": "地板" },
-        { "key": "window", "name": "窗戶" },
-        { "key": "window_screen", "name": "紗窗" },
-        { "key": "curtain", "name": "窗簾" },
-        { "key": "light", "name": "燈具" },
-        { "key": "outlet_switch", "name": "插座開關" },
         { "key": "air_conditioner", "name": "冷氣" }
       ]
     },
@@ -34,59 +23,30 @@
       "key": "kitchen",
       "name": "廚房",
       "items": [
-        { "key": "wall", "name": "牆面" },
-        { "key": "floor", "name": "地板" },
         { "key": "countertop", "name": "流理台" },
-        { "key": "sink_faucet", "name": "水槽水龍頭" },
-        { "key": "cabinet", "name": "櫥櫃" },
-        { "key": "range_hood", "name": "抽油煙機" },
-        { "key": "stove", "name": "瓦斯爐" },
-        { "key": "light", "name": "燈具" },
-        { "key": "outlet_switch", "name": "插座開關" }
+        { "key": "stove", "name": "瓦斯爐" }
       ]
     },
     {
       "key": "bathroom",
       "name": "浴室",
       "items": [
-        { "key": "wall", "name": "牆面" },
-        { "key": "floor", "name": "地板" },
         { "key": "toilet", "name": "馬桶" },
-        { "key": "washbasin", "name": "洗手台" },
-        { "key": "faucet", "name": "水龍頭" },
-        { "key": "shower", "name": "淋浴設備" },
-        { "key": "mirror", "name": "鏡子" },
-        { "key": "exhaust_fan", "name": "排風扇" },
-        { "key": "drain", "name": "排水" }
+        { "key": "faucet", "name": "水龍頭" }
       ]
     },
     {
       "key": "bedroom",
       "name": "臥室",
       "items": [
-        { "key": "door", "name": "門" },
-        { "key": "wall", "name": "牆面" },
-        { "key": "ceiling", "name": "天花板" },
-        { "key": "floor", "name": "地板" },
-        { "key": "window", "name": "窗戶" },
-        { "key": "window_screen", "name": "紗窗" },
-        { "key": "curtain", "name": "窗簾" },
-        { "key": "light", "name": "燈具" },
-        { "key": "outlet_switch", "name": "插座開關" },
-        { "key": "air_conditioner", "name": "冷氣" },
-        { "key": "wardrobe", "name": "衣櫥" }
+        { "key": "wall", "name": "牆面" }
       ]
     },
     {
       "key": "balcony",
       "name": "陽台",
       "items": [
-        { "key": "floor", "name": "地板" },
-        { "key": "railing", "name": "欄杆" },
-        { "key": "drain", "name": "排水" },
-        { "key": "clothes_rack", "name": "曬衣架" },
-        { "key": "washing_machine", "name": "洗衣機" },
-        { "key": "water_heater", "name": "熱水器" }
+        { "key": "railing", "name": "欄杆" }
       ]
     }
   ]
