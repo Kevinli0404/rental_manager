@@ -87,6 +87,16 @@ void main() {
     expect(await emitted, [0, 1]);
   });
 
+  test('依 id 監看照片；不存在或已刪除時是 null', () async {
+    await insert('photo-1');
+    await insert('deleted');
+    await db.photosDao.deletePhoto('deleted');
+
+    expect((await db.photosDao.watchPhoto('photo-1').first)?.id, 'photo-1');
+    expect(await db.photosDao.watchPhoto('deleted').first, isNull);
+    expect(await db.photosDao.watchPhoto('not-exist').first, isNull);
+  });
+
   group('deletePhoto', () {
     test('標記刪除時間並更新 updatedAt，回傳相對路徑；其他照片不受影響', () async {
       await insert('deleted');

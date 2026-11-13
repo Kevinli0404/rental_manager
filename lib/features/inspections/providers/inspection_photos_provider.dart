@@ -23,6 +23,14 @@ final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
 final inspectionPhotosProvider = StreamNotifierProvider.autoDispose
     .family<InspectionPhotos, List<Photo>, String>(InspectionPhotos.new);
 
+/// 依 id 監看照片；不存在或已刪除時是 null。離開照片檢視頁就停止監看（autoDispose）。
+final photoProvider = StreamProvider.autoDispose.family<Photo?, String>((
+  ref,
+  id,
+) {
+  return ref.watch(databaseProvider).photosDao.watchPhoto(id);
+});
+
 /// 照片縮小到長邊 1600、品質 80（architecture.md「檔案」、D-021）。
 const _maxSize = 1600.0;
 const _quality = 80;
@@ -76,5 +84,10 @@ class InspectionPhotos extends StreamNotifier<List<Photo>> {
         sourcePath: file.path,
       );
     }
+  }
+
+  /// 刪除照片：資料庫標記刪除，再刪檔（見 `PhotoRepository.deletePhoto`）。
+  Future<void> delete(String photoId) {
+    return ref.read(photoRepositoryProvider).deletePhoto(photoId);
   }
 }

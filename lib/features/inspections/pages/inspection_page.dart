@@ -117,6 +117,7 @@ class _InspectionScaffold extends ConsumerWidget {
                     // 管理空間後分頁的順序會變；用空間 key 對應，保留下來的卡片
                     // （見 _ItemCard）才不會被套到別的空間。
                     key: ValueKey(room.key),
+                    propertyId: inspection.propertyId,
                     inspectionId: inspection.id,
                     room: room,
                     results: _byItem(results),
@@ -163,12 +164,14 @@ Map<_ItemKey, List<Photo>> _photosByItem(List<Photo> photos) {
 class _RoomItems extends StatelessWidget {
   const _RoomItems({
     super.key,
+    required this.propertyId,
     required this.inspectionId,
     required this.room,
     required this.results,
     required this.photos,
   });
 
+  final String propertyId;
   final String inspectionId;
   final LayoutRoom room;
   final Map<_ItemKey, ItemResult> results;
@@ -181,6 +184,7 @@ class _RoomItems extends StatelessWidget {
       children: [
         for (final item in room.items)
           _ItemCard(
+            propertyId: propertyId,
             inspectionId: inspectionId,
             roomKey: room.key,
             item: item,
@@ -202,6 +206,7 @@ const _noteSaveDelay = Duration(milliseconds: 500);
 /// 這樣寫入還沒完成時卡片不會重建，不會讀到舊的備註。
 class _ItemCard extends ConsumerStatefulWidget {
   const _ItemCard({
+    required this.propertyId,
     required this.inspectionId,
     required this.roomKey,
     required this.item,
@@ -209,6 +214,7 @@ class _ItemCard extends ConsumerStatefulWidget {
     required this.photos,
   });
 
+  final String propertyId;
   final String inspectionId;
   final String roomKey;
   final LayoutItem item;
@@ -378,7 +384,17 @@ class _ItemCardState extends ConsumerState<_ItemCard>
               onChanged: _noteChanged,
             ),
             const SizedBox(height: 12),
-            _PhotoStrip(photos: widget.photos, onAdd: _addPhotos),
+            _PhotoStrip(
+              photos: widget.photos,
+              onOpen: (photo) => context.push(
+                AppRoutes.photo(
+                  widget.propertyId,
+                  widget.inspectionId,
+                  photo.id,
+                ),
+              ),
+              onAdd: _addPhotos,
+            ),
           ],
         ),
       ),
@@ -389,11 +405,16 @@ class _ItemCardState extends ConsumerState<_ItemCard>
 /// 縮圖的邊長。
 const _thumbnailSize = 72.0;
 
-/// 一排縮圖，最後一格是新增照片的按鈕；照片多時可以左右捲。
+/// 一排縮圖，點了全螢幕檢視；最後一格是新增照片的按鈕。照片多時可以左右捲。
 class _PhotoStrip extends ConsumerWidget {
-  const _PhotoStrip({required this.photos, required this.onAdd});
+  const _PhotoStrip({
+    required this.photos,
+    required this.onOpen,
+    required this.onAdd,
+  });
 
   final List<Photo> photos;
+  final ValueChanged<Photo> onOpen;
   final VoidCallback onAdd;
 
   @override
@@ -411,19 +432,24 @@ class _PhotoStrip extends ConsumerWidget {
           for (final photo in photos)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ClipRRect(
+              child: InkWell(
+                onTap: () => onOpen(photo),
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(
-                  files.resolve(photo.relativePath),
-                  width: _thumbnailSize,
-                  height: _thumbnailSize,
-                  fit: BoxFit.cover,
-                  cacheWidth: cacheWidth,
-                  // 推論：檔案讀不到時（例如被系統清掉）顯示破圖示，不讓整張卡片壞掉。
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    files.resolve(photo.relativePath),
                     width: _thumbnailSize,
                     height: _thumbnailSize,
-                    child: Icon(Icons.broken_image_outlined),
+                    fit: BoxFit.cover,
+                    cacheWidth: cacheWidth,
+                    // 推論：檔案讀不到時（例如被系統清掉）顯示破圖示，不讓整張卡片壞掉。
+                    errorBuilder: (context, error, stackTrace) =>
+                        const SizedBox(
+                          width: _thumbnailSize,
+                          height: _thumbnailSize,
+                          child: Icon(Icons.broken_image_outlined),
+                        ),
                   ),
                 ),
               ),

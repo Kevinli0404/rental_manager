@@ -46,6 +46,13 @@ class PhotosDao extends DatabaseAccessor<AppDatabase> with _$PhotosDaoMixin {
         .watch();
   }
 
+  /// 依 id 監看照片；不存在或已刪除時是 null。
+  Stream<Photo?> watchPhoto(String id) {
+    return (select(photos)
+          ..where((p) => p.id.equals(id) & p.deletedAt.isNull()))
+        .watchSingleOrNull();
+  }
+
   /// 軟刪除照片，回傳它的相對路徑，讓呼叫端接著刪檔。
   ///
   /// 不存在或已刪除時丟出 [StateError]，不默默略過。

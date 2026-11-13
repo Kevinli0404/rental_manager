@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/inspections/pages/inspection_page.dart';
 import '../features/inspections/pages/inspection_rooms_page.dart';
+import '../features/inspections/pages/photo_page.dart';
 import '../features/properties/pages/edit_property_page.dart';
 import '../features/properties/pages/new_property_page.dart';
 import '../features/properties/pages/property_detail_page.dart';
@@ -19,6 +20,8 @@ abstract final class AppRoutes {
       '/properties/$propertyId/inspections/$inspectionId';
   static String inspectionRooms(String propertyId, String inspectionId) =>
       '/properties/$propertyId/inspections/$inspectionId/rooms';
+  static String photo(String propertyId, String inspectionId, String photoId) =>
+      '/properties/$propertyId/inspections/$inspectionId/photos/$photoId';
 }
 
 /// 路由照路徑巢狀排列，`context.go` 時依路徑建立返回堆疊。
@@ -56,6 +59,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'rooms',
                     builder: (context, state) => InspectionRoomsPage(
                       inspectionId: state.pathParameters['iid']!,
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'photos/:photoId',
+                    builder: (context, state) => PhotoPage(
+                      inspectionId: state.pathParameters['iid']!,
+                      photoId: state.pathParameters['photoId']!,
                     ),
                   ),
                 ],
