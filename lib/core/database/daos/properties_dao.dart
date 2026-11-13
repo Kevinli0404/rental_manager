@@ -68,9 +68,10 @@ class PropertiesDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 軟刪除物件，底下的點交紀錄在同一個交易裡一起軟刪除（product.md「刪除規則」）。
+  /// 回傳這次一起標記刪除的點交紀錄 id，讓呼叫端接著刪它們的照片檔（D-022）。
   ///
   /// 物件不存在或已刪除時丟出 [StateError]，整個交易不生效。
-  Future<void> deleteProperty(String id) {
+  Future<List<String>> deleteProperty(String id) {
     return transaction(() async {
       final now = attachedDatabase.nowUtc();
       final count = await _whereActive(id).write(
@@ -81,11 +82,18 @@ class PropertiesDao extends DatabaseAccessor<AppDatabase>
       // 推論：之前已經刪掉的點交紀錄保留原本的刪除時間，只標記還沒刪除的。
       // 推論：項目結果、照片、簽名只會透過點交紀錄讀到，點交紀錄刪除後就不會顯示，
       // 所以不逐筆標記。
-      await (update(
-        inspections,
-      )..where((i) => i.propertyId.equals(id) & i.deletedAt.isNull())).write(
+      final activeInspections =
+          inspections.propertyId.equals(id) & inspections.deletedAt.isNull();
+      final deletedIds =
+          await (selectOnly(inspections)
+                ..addColumns([inspections.id])
+                ..where(activeInspections))
+              .map((row) => row.read(inspections.id)!)
+              .get();
+      await (update(inspections)..where((_) => activeInspections)).write(
         InspectionsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
       );
+      return deletedIds;
     });
   }
 

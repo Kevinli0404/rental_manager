@@ -101,15 +101,25 @@ class InspectionsDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// 刪除空間：從空間配置拿掉，同一個交易裡把這個空間的項目結果和照片也軟刪除
-  /// （product.md「空間」：內容和照片一起刪除）。
+  /// （product.md「空間」：內容和照片一起刪除）。回傳這次標記刪除的照片的相對路徑，
+  /// 讓呼叫端接著刪檔（D-022）。
   ///
   /// 只剩一個空間、空間不存在、點交紀錄不存在或已刪除時丟出 [StateError]，資料不變。
-  /// 照片檔案本身的清理在 T4 處理。
-  Future<void> deleteRoom(String inspectionId, String roomKey) {
+  Future<List<String>> deleteRoom(String inspectionId, String roomKey) {
     return transaction(() async {
       await updateLayout(inspectionId, (layout) => layout.removeRoom(roomKey));
 
       // 之前已經刪掉的（例如單獨刪除的照片）保留原本的刪除時間，只標記還沒刪除的。
+      final roomPhotos =
+          photos.inspectionId.equals(inspectionId) &
+          photos.roomKey.equals(roomKey) &
+          photos.deletedAt.isNull();
+      final deletedPaths =
+          await (selectOnly(photos)
+                ..addColumns([photos.relativePath])
+                ..where(roomPhotos))
+              .map((row) => row.read(photos.relativePath)!)
+              .get();
       final now = attachedDatabase.nowUtc();
       await (update(itemResults)..where(
             (r) =>
@@ -120,13 +130,10 @@ class InspectionsDao extends DatabaseAccessor<AppDatabase>
           .write(
             ItemResultsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
           );
-      await (update(photos)..where(
-            (p) =>
-                p.inspectionId.equals(inspectionId) &
-                p.roomKey.equals(roomKey) &
-                p.deletedAt.isNull(),
-          ))
-          .write(PhotosCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+      await (update(photos)..where((_) => roomPhotos)).write(
+        PhotosCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+      );
+      return deletedPaths;
     });
   }
 }

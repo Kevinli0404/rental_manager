@@ -1,3 +1,5 @@
+import 'dart:io' show FileSystemException;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -5,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_manager/app/app.dart';
 import 'package:rental_manager/app/router.dart';
 import 'package:rental_manager/core/database/database.dart';
+import 'package:rental_manager/core/database/database_provider.dart';
+import 'package:rental_manager/core/files/file_store.dart';
 import 'package:rental_manager/features/inspections/providers/inspection_controller.dart';
 import 'package:rental_manager/features/inspections/providers/inspection_photos_provider.dart';
 import 'package:rental_manager/features/templates/data/layout.dart';
@@ -524,6 +528,28 @@ void main() {
     expect(await savedLayout(database), _layout);
   });
 
+  testWidgets('空間已經刪掉、但照片檔沒清掉時分開說明，不說刪除失敗', (tester) async {
+    final database = await setUpData(
+      tester,
+      overrides: [
+        inspectionControllerProvider.overrideWith2(
+          _CleanupFailingController.new,
+        ),
+      ],
+    );
+    await openInspection(tester);
+    await openRooms(tester);
+
+    await chooseRoomAction(tester, '陽台', '刪除');
+    await tester.pumpAndSettle();
+
+    expect(listedRooms(tester), ['客廳', '臥室']);
+    expect((await savedLayout(database)).rooms, hasLength(2));
+    expect(find.textContaining('已刪除，但有照片檔沒有清掉'), findsOneWidget);
+    expect(find.textContaining('磁碟壞了'), findsOneWidget);
+    expect(find.textContaining('刪除失敗'), findsNothing);
+  });
+
   testWidgets('刪除前面的空間後回到點交頁，留下來的分頁顯示的還是自己空間的備註', (tester) async {
     const twoBedrooms = Layout(
       templateId: 'default-residence',
@@ -600,4 +626,18 @@ class _BrokenPhotos extends InspectionPhotos {
 
   @override
   Stream<List<Photo>> build() => Stream.error(StateError('資料庫鎖住了'));
+}
+
+/// 空間照樣從資料庫刪掉，之後刪照片檔失敗。
+class _CleanupFailingController extends InspectionController {
+  _CleanupFailingController(super.inspectionId);
+
+  @override
+  Future<void> deleteRoom(String roomKey) async {
+    await ref
+        .read(databaseProvider)
+        .inspectionsDao
+        .deleteRoom(inspectionId, roomKey);
+    throw FileCleanupException(const FileSystemException('磁碟壞了'));
+  }
 }

@@ -199,8 +199,11 @@ void main() {
       final inspectionId = await createInspection(propertyId);
 
       advanceClock();
-      await db.propertiesDao.deleteProperty(propertyId);
+      final deletedInspections = await db.propertiesDao.deleteProperty(
+        propertyId,
+      );
 
+      expect(deletedInspections, [inspectionId], reason: '回傳一起刪掉的點交紀錄');
       expect(await db.propertiesDao.watchProperty(propertyId).first, isNull);
       expect(
         await db.inspectionsDao.watchInspection(inspectionId).first,
@@ -223,9 +226,13 @@ void main() {
       final deletedId = await db.propertiesDao.createProperty(name: '要刪的');
       final keptId = await db.propertiesDao.createProperty(name: '要留的');
       final keptInspectionId = await createInspection(keptId);
-      await createInspection(deletedId);
+      final deletedInspectionId = await createInspection(deletedId);
 
-      await db.propertiesDao.deleteProperty(deletedId);
+      final deletedInspections = await db.propertiesDao.deleteProperty(
+        deletedId,
+      );
+
+      expect(deletedInspections, [deletedInspectionId]);
 
       expect(await db.propertiesDao.watchProperty(keptId).first, isNotNull);
       expect(
@@ -242,8 +249,11 @@ void main() {
           .write(InspectionsCompanion(deletedAt: Value(earlier)));
 
       advanceClock();
-      await db.propertiesDao.deleteProperty(propertyId);
+      final deletedInspections = await db.propertiesDao.deleteProperty(
+        propertyId,
+      );
 
+      expect(deletedInspections, isEmpty, reason: '之前已經刪掉的不算這次刪的');
       final inspection = await (db.select(
         db.inspections,
       )..where((i) => i.id.equals(inspectionId))).getSingle();

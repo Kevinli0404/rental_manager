@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/leave_then_delete.dart';
 import '../../../core/database/database.dart';
 import '../../templates/data/layout.dart';
 import '../../templates/data/template.dart';
@@ -182,7 +183,9 @@ class _RoomTile extends ConsumerWidget {
     try {
       await controller.deleteRoom(room.key);
     } catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text('刪除失敗：$error')));
+      messenger.showSnackBar(
+        SnackBar(content: Text(deleteErrorMessage(error))),
+      );
     }
   }
 

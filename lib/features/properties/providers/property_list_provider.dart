@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database.dart';
 import '../../../core/database/database_provider.dart';
+import '../../inspections/providers/inspection_photos_provider.dart';
 
 /// 物件列表（不含已刪除），依建立時間新到舊，資料一改就自動更新。
 final propertyListProvider =
@@ -50,8 +51,8 @@ class PropertyList extends StreamNotifier<List<Property>> {
         );
   }
 
-  /// 軟刪除物件，底下的點交紀錄一起刪除（見 `PropertiesDao.deleteProperty`）。
+  /// 軟刪除物件，底下的點交紀錄和照片檔一起刪除（見 `PhotoRepository.deleteProperty`）。
   Future<void> delete(String id) async {
-    await ref.read(databaseProvider).propertiesDao.deleteProperty(id);
+    await ref.read(photoRepositoryProvider).deleteProperty(id);
   }
 }

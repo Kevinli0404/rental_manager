@@ -4,6 +4,7 @@ import '../../../core/database/database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../templates/data/layout.dart';
 import '../../templates/data/template_loader.dart';
+import 'inspection_photos_provider.dart';
 
 /// 某個物件的點交紀錄（不含已刪除），依點交日期新到舊，資料一改就自動更新。
 ///
@@ -47,8 +48,8 @@ class InspectionList extends StreamNotifier<List<Inspection>> {
         );
   }
 
-  /// 軟刪除點交紀錄（見 `InspectionsDao.deleteInspection`）。
+  /// 軟刪除點交紀錄，再刪它的照片檔（見 `PhotoRepository.deleteInspection`）。
   Future<void> delete(String id) async {
-    await ref.read(databaseProvider).inspectionsDao.deleteInspection(id);
+    await ref.read(photoRepositoryProvider).deleteInspection(id);
   }
 }

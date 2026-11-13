@@ -102,7 +102,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
   - 軟刪除同時更新 `updatedAt`。刪除物件時，在同一個交易裡把底下還沒刪除的點交紀錄一起軟刪除。
   - 項目結果依 (inspectionId, roomKey, itemKey) 新增或更新（upsert）；狀況、備註分開寫入，只更新該欄位和 `updatedAt`。
   - 修改空間配置用 `InspectionsDao.updateLayout`：在交易裡讀出目前的配置、修改後寫回，不拿畫面上可能過時的配置去改。空間的新增、複製、改名稱、刪除寫在 `Layout` 的 extension（`lib/features/templates/data/layout.dart`）。
-  - 刪除空間用 `InspectionsDao.deleteRoom`：同一個交易裡把空間從配置拿掉，並把這個空間的項目結果和照片軟刪除（D-020）。
+  - 刪除空間用 `InspectionsDao.deleteRoom`：同一個交易裡把空間從配置拿掉，並把這個空間的項目結果和照片軟刪除（D-020），回傳這次刪掉的照片路徑。刪除物件的 `PropertiesDao.deleteProperty` 回傳這次一起刪掉的點交紀錄 id。呼叫端用這些資料刪照片檔（D-022）。
 
 ## 範本與空間配置
 
@@ -162,6 +162,8 @@ drift_schemas/         drift schema 快照（migration 測試用）
 - 檔案存取寫在 `FileStore`（`lib/core/files/file_store.dart`）：對外只用相對路徑（用 `/` 分隔），用的時候再依 Documents 目錄組出絕對路徑。
 - 照片存檔前先縮小（長邊 1600px 以內、JPEG 品質約 80），控制容量和 PDF 大小；用 image_picker 的 `maxWidth`、`maxHeight`、`imageQuality` 做（D-021）。
 - 照片的新增、刪除都走 `PhotoRepository`（`lib/features/inspections/data/photo_repository.dart`）：新增時先存檔再寫資料庫，寫入失敗就刪掉剛存的檔；刪除時先在資料庫標記刪除，成功後再刪檔案。
+- 會連帶刪掉照片的刪除（空間、點交紀錄、物件）也走 `PhotoRepository`，資料庫刪除成功後馬上刪檔：刪空間刪這個空間的照片檔，刪點交紀錄、物件刪整個 `photos/{inspectionId}/` 資料夾（D-022）。
+- 資料已經刪除、但刪檔失敗時丟出 `FileCleanupException`；畫面上用 `deleteErrorMessage`（`lib/app/leave_then_delete.dart`）顯示「已刪除，但有照片檔沒有清掉」，不說刪除失敗。
 
 ## 路由
 

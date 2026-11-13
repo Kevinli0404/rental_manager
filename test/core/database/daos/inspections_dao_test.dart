@@ -312,8 +312,9 @@ void main() {
       final deletedAt = now.add(const Duration(hours: 1));
       clockNow = deletedAt;
 
-      await db.inspectionsDao.deleteRoom(id, 'b2');
+      final deletedPaths = await db.inspectionsDao.deleteRoom(id, 'b2');
 
+      expect(deletedPaths, ['photos/$id/b2.jpg'], reason: '回傳這次刪掉的照片');
       final inspections = await db.select(db.inspections).get();
       final changed = inspections.singleWhere((i) => i.id == id);
       expect(changed.layout.rooms.map((r) => r.key), ['bedroom']);
@@ -346,8 +347,9 @@ void main() {
       await addPhoto(id, 'b2', deletedAt: now);
       clockNow = now.add(const Duration(hours: 1));
 
-      await db.inspectionsDao.deleteRoom(id, 'b2');
+      final deletedPaths = await db.inspectionsDao.deleteRoom(id, 'b2');
 
+      expect(deletedPaths, isEmpty, reason: '之前已經刪掉的照片不算這次刪的');
       final result = await db.select(db.itemResults).getSingle();
       expect(result.deletedAt, now);
       expect(result.updatedAt, now);

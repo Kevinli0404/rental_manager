@@ -1,3 +1,5 @@
+import 'dart:io' show FileSystemException;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -212,6 +214,26 @@ void main() {
     });
   });
 
+  testWidgets('照片已經刪掉、但檔案沒清掉時，回到點交頁並分開說明，不說刪除失敗', (tester) async {
+    await setUpData(tester);
+    await openInspection(tester);
+    await openThumbnail(tester, 0);
+    repository.cleanupError = FileCleanupException(
+      const FileSystemException('磁碟壞了'),
+    );
+
+    await tester.tap(find.byTooltip('刪除'));
+    await tester.pumpAndSettle();
+    await tester.tap(dialogButton('刪除'));
+    await tester.pumpAndSettle();
+
+    expect(inAppBar('入住 2026-11-13'), findsOneWidget);
+    expect(thumbnails(), findsOneWidget);
+    expect(find.textContaining('已刪除，但有照片檔沒有清掉'), findsOneWidget);
+    expect(find.textContaining('磁碟壞了'), findsOneWidget);
+    expect(find.textContaining('刪除失敗'), findsNothing);
+  });
+
   testWidgets('已簽名的點交紀錄沒有刪除鈕', (tester) async {
     final database = await setUpData(tester);
     await (database.update(
@@ -287,10 +309,14 @@ class _FakePhotoRepository extends PhotoRepository {
   final deleted = <String>[];
   Error? error;
 
+  /// 資料庫照樣刪除，之後丟出這個錯誤（模擬照片檔刪失敗）。
+  FileCleanupException? cleanupError;
+
   @override
   Future<void> deletePhoto(String id) async {
     if (error case final error?) throw error;
     deleted.add(id);
     await _db.photosDao.deletePhoto(id);
+    if (cleanupError case final cleanupError?) throw cleanupError;
   }
 }

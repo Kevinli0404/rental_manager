@@ -5,6 +5,7 @@ import '../../../core/database/database_provider.dart';
 import '../../templates/data/layout.dart';
 import '../../templates/data/template.dart';
 import '../../templates/data/template_loader.dart';
+import 'inspection_photos_provider.dart';
 
 /// 某筆點交的項目結果（不含已刪除），資料一改就自動更新；填寫時的寫入（狀況、備註、
 /// 管理空間）也在這裡。
@@ -99,11 +100,8 @@ class InspectionController extends StreamNotifier<List<ItemResult>> {
         );
   }
 
-  /// 刪除空間，連同它的項目結果和照片（見 `InspectionsDao.deleteRoom`）。
+  /// 刪除空間，連同它的項目結果、照片紀錄和照片檔（見 `PhotoRepository.deleteRoom`）。
   Future<void> deleteRoom(String roomKey) {
-    return ref
-        .read(databaseProvider)
-        .inspectionsDao
-        .deleteRoom(inspectionId, roomKey);
+    return ref.read(photoRepositoryProvider).deleteRoom(inspectionId, roomKey);
   }
 }

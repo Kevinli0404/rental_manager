@@ -101,6 +101,30 @@ void main() {
       expect(await store.resolve(relativePath).exists(), isFalse);
     });
 
+    test('刪掉整個點交的照片資料夾，其他點交的照片還在；資料夾不存在也不會出錯', () async {
+      Future<String> save(String inspectionId, String photoId) async =>
+          store.savePhoto(
+            inspectionId: inspectionId,
+            photoId: photoId,
+            sourcePath: await sourceFile('$inspectionId-$photoId.jpg', [1]),
+          );
+      await save('inspection-1', 'photo-1');
+      await save('inspection-1', 'photo-2');
+      final kept = await save('inspection-2', 'photo-3');
+
+      await store.deleteInspectionPhotos('inspection-1');
+
+      final folder = Directory(
+        p.join(documents.path, 'photos', 'inspection-1'),
+      );
+      expect(await folder.exists(), isFalse);
+      expect(await store.resolve(kept).exists(), isTrue);
+
+      await store.deleteInspectionPhotos('inspection-1');
+      await store.deleteInspectionPhotos('never-existed');
+      expect(await store.resolve(kept).exists(), isTrue);
+    });
+
     test('只刪指定的檔案，同一個資料夾的其他照片還在', () async {
       Future<String> save(String photoId) async => store.savePhoto(
         inspectionId: 'inspection-1',
