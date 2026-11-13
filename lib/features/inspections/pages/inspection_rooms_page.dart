@@ -6,6 +6,7 @@ import '../../templates/data/layout.dart';
 import '../../templates/data/template.dart';
 import '../../templates/data/template_loader.dart';
 import '../providers/inspection_controller.dart';
+import '../providers/inspection_photos_provider.dart';
 import '../providers/inspection_provider.dart';
 
 /// 管理空間：列出這筆點交的空間，可以新增、複製、改名稱、刪除（product.md「空間」）。
@@ -19,8 +20,9 @@ class InspectionRoomsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final inspection = ref.watch(inspectionProvider(inspectionId));
-    // 刪除前要知道空間有沒有填寫內容；在這頁監看，資料才是最新的。
+    // 刪除前要知道空間有沒有填寫內容和照片；在這頁監看，資料才是最新的。
     final results = ref.watch(inspectionControllerProvider(inspectionId));
+    final photos = ref.watch(inspectionPhotosProvider(inspectionId));
     final layout = inspection.value?.layout;
 
     return Scaffold(
@@ -36,6 +38,7 @@ class InspectionRoomsPage extends ConsumerWidget {
                 layout: inspection.layout,
                 room: room,
                 results: results.value,
+                photos: photos.value,
               ),
           ],
         ),
@@ -83,6 +86,7 @@ class _RoomTile extends ConsumerWidget {
     required this.layout,
     required this.room,
     required this.results,
+    required this.photos,
   });
 
   final String inspectionId;
@@ -91,6 +95,9 @@ class _RoomTile extends ConsumerWidget {
 
   /// 這筆點交的項目結果；還沒讀到或讀取失敗時是 null。
   final List<ItemResult>? results;
+
+  /// 這筆點交的照片；還沒讀到或讀取失敗時是 null。
+  final List<Photo>? photos;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -179,18 +186,19 @@ class _RoomTile extends ConsumerWidget {
     }
   }
 
-  /// 這個空間有沒有填寫內容：選了狀況，或備註不是空白。
+  /// 這個空間有沒有填寫內容或照片：選了狀況、備註不是空白，或有照片。
   ///
-  /// 推論：還沒讀到填寫內容（或讀取失敗）時當作有內容，先確認再刪，寧可多問一次。
-  /// 照片在 T4 加上後也要算進來（roadmap）。
+  /// 推論：還沒讀到填寫內容或照片（或讀取失敗）時當作有內容，先確認再刪，寧可多問一次。
   bool _hasContent() {
     final results = this.results;
-    if (results == null) return true;
+    final photos = this.photos;
+    if (results == null || photos == null) return true;
     return results.any(
-      (r) =>
-          r.roomKey == room.key &&
-          (r.condition != null || r.note.trim().isNotEmpty),
-    );
+          (r) =>
+              r.roomKey == room.key &&
+              (r.condition != null || r.note.trim().isNotEmpty),
+        ) ||
+        photos.any((p) => p.roomKey == room.key);
   }
 }
 

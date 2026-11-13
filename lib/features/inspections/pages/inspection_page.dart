@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart' show ImageSource;
 
 import '../../../app/leave_then_delete.dart';
 import '../../../app/router.dart';
 import '../../../core/database/database.dart';
+import '../../../core/files/file_store_provider.dart';
 import '../../templates/data/layout.dart';
 import '../providers/inspection_controller.dart';
 import '../providers/inspection_list_provider.dart';
+import '../providers/inspection_photos_provider.dart';
 import '../providers/inspection_provider.dart';
 import '../widgets/inspection_labels.dart';
 
@@ -59,6 +63,7 @@ class _InspectionScaffold extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rooms = inspection.layout.rooms;
     final results = ref.watch(inspectionControllerProvider(inspection.id));
+    final photos = ref.watch(inspectionPhotosProvider(inspection.id));
 
     return DefaultTabController(
       length: rooms.length,
@@ -100,24 +105,29 @@ class _InspectionScaffold extends ConsumerWidget {
                   tabs: [for (final room in rooms) Tab(text: room.name)],
                 ),
         ),
-        body: switch (results) {
+        body: switch ((results, photos)) {
           // 推論：配置裡沒有空間時顯示提示。管理空間（T3 下一步）會保留至少一個空間，
           // 這裡只是防止畫面壞掉。
           _ when rooms.isEmpty => const Center(child: Text('這筆點交沒有空間')),
-          AsyncData(:final value) => TabBarView(
-            children: [
-              for (final room in rooms)
-                _RoomItems(
-                  // 管理空間後分頁的順序會變；用空間 key 對應，保留下來的卡片
-                  // （見 _ItemCard）才不會被套到別的空間。
-                  key: ValueKey(room.key),
-                  inspectionId: inspection.id,
-                  room: room,
-                  results: _byItem(value),
-                ),
-            ],
+          (AsyncData(value: final results), AsyncData(value: final photos)) =>
+            TabBarView(
+              children: [
+                for (final room in rooms)
+                  _RoomItems(
+                    // 管理空間後分頁的順序會變；用空間 key 對應，保留下來的卡片
+                    // （見 _ItemCard）才不會被套到別的空間。
+                    key: ValueKey(room.key),
+                    inspectionId: inspection.id,
+                    room: room,
+                    results: _byItem(results),
+                    photos: _photosByItem(photos),
+                  ),
+              ],
+            ),
+          (AsyncError(:final error), _) => Center(
+            child: Text('讀取填寫內容失敗：$error'),
           ),
-          AsyncError(:final error) => Center(child: Text('讀取填寫內容失敗：$error')),
+          (_, AsyncError(:final error)) => Center(child: Text('讀取照片失敗：$error')),
           _ => const Center(child: CircularProgressIndicator()),
         },
         bottomNavigationBar: switch (results) {
@@ -140,6 +150,15 @@ Map<_ItemKey, ItemResult> _byItem(List<ItemResult> results) {
   };
 }
 
+/// 照片依項目分組，每組維持原本的順序（加入順序）。
+Map<_ItemKey, List<Photo>> _photosByItem(List<Photo> photos) {
+  final grouped = <_ItemKey, List<Photo>>{};
+  for (final photo in photos) {
+    (grouped[(photo.roomKey, photo.itemKey)] ??= []).add(photo);
+  }
+  return grouped;
+}
+
 /// 一個空間的項目列表。
 class _RoomItems extends StatelessWidget {
   const _RoomItems({
@@ -147,11 +166,13 @@ class _RoomItems extends StatelessWidget {
     required this.inspectionId,
     required this.room,
     required this.results,
+    required this.photos,
   });
 
   final String inspectionId;
   final LayoutRoom room;
   final Map<_ItemKey, ItemResult> results;
+  final Map<_ItemKey, List<Photo>> photos;
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +185,7 @@ class _RoomItems extends StatelessWidget {
             roomKey: room.key,
             item: item,
             result: results[(room.key, item.key)],
+            photos: photos[(room.key, item.key)] ?? const [],
           ),
       ],
     );
@@ -173,7 +195,7 @@ class _RoomItems extends StatelessWidget {
 /// 停止輸入多久之後寫入備註（D-007 的防抖）。
 const _noteSaveDelay = Duration(milliseconds: 500);
 
-/// 一個項目：名稱、狀況和備註。
+/// 一個項目：名稱、狀況、備註和照片。
 ///
 /// 備註輸入框只在建立時從資料庫讀一次，之後以輸入框為準。卡片要求保留（keep alive），
 /// 捲出畫面時不會被拆掉；這個要求也會往上傳到分頁，切到別的分頁時整頁一起保留。
@@ -184,12 +206,14 @@ class _ItemCard extends ConsumerStatefulWidget {
     required this.roomKey,
     required this.item,
     required this.result,
+    required this.photos,
   });
 
   final String inspectionId;
   final String roomKey;
   final LayoutItem item;
   final ItemResult? result;
+  final List<Photo> photos;
 
   @override
   ConsumerState<_ItemCard> createState() => _ItemCardState();
@@ -275,6 +299,39 @@ class _ItemCardState extends ConsumerState<_ItemCard>
     }
   }
 
+  /// 從底部選單選拍照或相簿，把照片加到這個項目。
+  Future<void> _addPhotos() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => const _PhotoSourceSheet(),
+    );
+    if (source == null || !mounted) return;
+
+    final photos = ref.read(
+      inspectionPhotosProvider(widget.inspectionId).notifier,
+    );
+    try {
+      await photos.pick(
+        source: source,
+        roomKey: widget.roomKey,
+        itemKey: widget.item.key,
+      );
+    } catch (error) {
+      // image_picker 在 iOS 沒有相機權限時的錯誤代碼。
+      final noCameraPermission =
+          error is PlatformException &&
+          (error.code == 'camera_access_denied' ||
+              error.code == 'camera_access_restricted');
+      _messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            noCameraPermission ? '沒有相機權限，請到「設定」開啟' : '加入照片失敗：$error',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -320,8 +377,98 @@ class _ItemCardState extends ConsumerState<_ItemCard>
               textInputAction: TextInputAction.done,
               onChanged: _noteChanged,
             ),
+            const SizedBox(height: 12),
+            _PhotoStrip(photos: widget.photos, onAdd: _addPhotos),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 縮圖的邊長。
+const _thumbnailSize = 72.0;
+
+/// 一排縮圖，最後一格是新增照片的按鈕；照片多時可以左右捲。
+class _PhotoStrip extends ConsumerWidget {
+  const _PhotoStrip({required this.photos, required this.onAdd});
+
+  final List<Photo> photos;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final files = ref.watch(fileStoreProvider);
+    // 照片長邊有 1600px，縮圖只解碼成需要的大小，省記憶體。
+    final cacheWidth = (_thumbnailSize * MediaQuery.devicePixelRatioOf(context))
+        .round();
+
+    return SizedBox(
+      height: _thumbnailSize,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          for (final photo in photos)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.file(
+                  files.resolve(photo.relativePath),
+                  width: _thumbnailSize,
+                  height: _thumbnailSize,
+                  fit: BoxFit.cover,
+                  cacheWidth: cacheWidth,
+                  // 推論：檔案讀不到時（例如被系統清掉）顯示破圖示，不讓整張卡片壞掉。
+                  errorBuilder: (context, error, stackTrace) => const SizedBox(
+                    width: _thumbnailSize,
+                    height: _thumbnailSize,
+                    child: Icon(Icons.broken_image_outlined),
+                  ),
+                ),
+              ),
+            ),
+          SizedBox.square(
+            dimension: _thumbnailSize,
+            child: IconButton.outlined(
+              onPressed: onAdd,
+              tooltip: '新增照片',
+              // 跟縮圖一樣是圓角方形。
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: const Icon(Icons.add_a_photo_outlined),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 選照片來源的底部選單；選了回傳來源，關掉時回傳 null。
+class _PhotoSourceSheet extends StatelessWidget {
+  const _PhotoSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.photo_camera_outlined),
+            title: const Text('拍照'),
+            onTap: () => Navigator.pop(context, ImageSource.camera),
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('從相簿選'),
+            onTap: () => Navigator.pop(context, ImageSource.gallery),
+          ),
+        ],
       ),
     );
   }

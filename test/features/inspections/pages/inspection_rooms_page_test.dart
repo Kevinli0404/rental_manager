@@ -6,6 +6,7 @@ import 'package:rental_manager/app/app.dart';
 import 'package:rental_manager/app/router.dart';
 import 'package:rental_manager/core/database/database.dart';
 import 'package:rental_manager/features/inspections/providers/inspection_controller.dart';
+import 'package:rental_manager/features/inspections/providers/inspection_photos_provider.dart';
 import 'package:rental_manager/features/templates/data/layout.dart';
 import 'package:rental_manager/features/templates/data/template.dart';
 
@@ -381,6 +382,45 @@ void main() {
       expect((await savedLayout(database)).rooms, hasLength(2));
     });
 
+    testWidgets('只有照片的空間也要先確認', (tester) async {
+      final database = await setUpData(tester);
+      await database.photosDao.insertPhoto(
+        id: 'photo-1',
+        inspectionId: inspectionId,
+        roomKey: 'balcony',
+        itemKey: 'floor',
+        relativePath: 'photos/$inspectionId/photo-1.jpg',
+      );
+      await openInspection(tester);
+      await openRooms(tester);
+
+      await chooseRoomAction(tester, '陽台', '刪除');
+      expect(find.text('刪除「陽台」？'), findsOneWidget);
+      await tester.tap(dialogButton('取消'));
+      await tester.pumpAndSettle();
+      expect(await savedLayout(database), _layout);
+
+      // 照片只算在自己的空間：臥室沒有內容也沒有照片，直接刪除。
+      await chooseRoomAction(tester, '臥室', '刪除');
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(listedRooms(tester), ['客廳', '陽台']);
+    });
+
+    testWidgets('讀不到照片時，刪除前一律先確認', (tester) async {
+      final database = await setUpData(
+        tester,
+        overrides: [inspectionPhotosProvider.overrideWith2(_BrokenPhotos.new)],
+      );
+      await openInspection(tester);
+      await openRooms(tester);
+
+      await chooseRoomAction(tester, '陽台', '刪除');
+      expect(find.text('刪除「陽台」？'), findsOneWidget);
+      await tester.tap(dialogButton('取消'));
+      await tester.pumpAndSettle();
+      expect(await savedLayout(database), _layout);
+    });
+
     testWidgets('讀不到填寫內容時，刪除前一律先確認', (tester) async {
       final database = await setUpData(
         tester,
@@ -552,4 +592,12 @@ class _BrokenResultsController extends InspectionController {
 
   @override
   Stream<List<ItemResult>> build() => Stream.error(StateError('資料庫鎖住了'));
+}
+
+/// 讀取照片失敗。
+class _BrokenPhotos extends InspectionPhotos {
+  _BrokenPhotos(super.inspectionId);
+
+  @override
+  Stream<List<Photo>> build() => Stream.error(StateError('資料庫鎖住了'));
 }

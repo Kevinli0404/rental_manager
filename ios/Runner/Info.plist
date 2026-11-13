@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>拍攝點交項目的照片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>從相簿選擇點交項目的照片</string>
 </dict>
 </plist>

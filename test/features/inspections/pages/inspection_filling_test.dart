@@ -392,16 +392,21 @@ void main() {
       );
       await openInspection(tester);
 
+      // 項目列表（直向）；每張卡片裡的縮圖列也是 ListView，但是橫向的。
+      final itemList = find.byWidgetPredicate(
+        (widget) =>
+            widget is ListView && widget.scrollDirection == Axis.vertical,
+      );
       await tester.enterText(noteOf('項目 1'), '水龍頭會滴水');
       // 收起鍵盤。輸入框有焦點時 Flutter 本來就會保留它，要沒有焦點才測得出來。
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump(const Duration(milliseconds: 500));
 
-      await tester.drag(find.byType(ListView), const Offset(0, -5000));
+      await tester.drag(itemList, const Offset(0, -5000));
       await tester.pumpAndSettle();
       expect(find.text('項目 20'), findsOneWidget);
       expect(find.text('項目 1'), findsNothing);
-      await tester.drag(find.byType(ListView), const Offset(0, 5000));
+      await tester.drag(itemList, const Offset(0, 5000));
       await tester.pumpAndSettle();
       expect(noteText(tester, '項目 1'), '水龍頭會滴水', reason: '捲動之後');
 

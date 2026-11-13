@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -7,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rental_manager/app/app.dart';
 import 'package:rental_manager/core/database/database.dart';
 import 'package:rental_manager/core/database/database_provider.dart';
+import 'package:rental_manager/core/files/file_store.dart';
+import 'package:rental_manager/core/files/file_store_provider.dart';
 
 /// 用記憶體資料庫啟動整個 App（含路由），停在首頁。
 ///
@@ -28,9 +32,14 @@ Future<AppDatabase> pumpApp(
     ),
   );
 
+  // 照片檔案放在這個測試專用的暫存資料夾（Documents 目錄要靠 main.dart 啟動時取得）。
+  final documents = Directory.systemTemp.createTempSync('rental_manager_test');
+  addTearDown(() => documents.deleteSync(recursive: true));
+
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        fileStoreProvider.overrideWithValue(FileStore(documents)),
         // 資料庫跟 App 一樣由 ProviderScope 關閉，不用 addTearDown。
         // 測試失敗時 flutter_test 不會拆掉畫面，被蓋住的頁面（例如新增頁底下的列表）
         // 的監看查詢還在暫停中；這時在 tearDown 關資料庫，會一直等不到那個查詢結束，
