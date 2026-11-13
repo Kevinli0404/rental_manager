@@ -157,10 +157,11 @@ drift_schemas/         drift schema 快照（migration 測試用）
 
 ## 檔案（照片、簽名）
 
-- 存在 App 的 Documents 目錄：`photos/{inspectionId}/{photoId}.jpg`、`signatures/{inspectionId}/{role}.png`。
+- 存在 App 的 Documents 目錄：`photos/{inspectionId}/{photoId}.{副檔名}`、`signatures/{inspectionId}/{role}.png`。照片的副檔名照實際格式，通常是 `.jpg`；相簿裡的 PNG、GIF 保留原格式（D-021）。
 - 資料庫只存相對路徑；iOS 更新 App 之後，沙盒的絕對路徑可能會變。
-- 照片存檔前先縮小（長邊 1600px 以內、JPEG 品質約 80），控制容量和 PDF 大小。
-- 刪除照片時，先在資料庫標記刪除，成功後再刪檔案。
+- 檔案存取寫在 `FileStore`（`lib/core/files/file_store.dart`）：對外只用相對路徑（用 `/` 分隔），用的時候再依 Documents 目錄組出絕對路徑。
+- 照片存檔前先縮小（長邊 1600px 以內、JPEG 品質約 80），控制容量和 PDF 大小；用 image_picker 的 `maxWidth`、`maxHeight`、`imageQuality` 做（D-021）。
+- 照片的新增、刪除都走 `PhotoRepository`（`lib/features/inspections/data/photo_repository.dart`）：新增時先存檔再寫資料庫，寫入失敗就刪掉剛存的檔；刪除時先在資料庫標記刪除，成功後再刪檔案。
 
 ## 路由
 
@@ -187,7 +188,7 @@ drift_schemas/         drift schema 快照（migration 測試用）
 
 | 對象 | 方式 |
 |---|---|
-| DAO、repository | 用 `NativeDatabase.memory()` 的記憶體資料庫 |
+| DAO、repository | 用 `NativeDatabase.memory()` 的記憶體資料庫；檔案存在測試建立的暫存資料夾 |
 | 規則（狀態轉換、簽名前檢查、刪除規則） | 純單元測試 |
 | 退租對照（找入住紀錄、判斷變差） | 純單元測試 |
 | 重要畫面（點交頁的唯讀切換、簽名前檢查的提示） | widget test：用 `test/helpers/pump_app.dart` 啟動整個 App（含路由），資料庫換成記憶體資料庫 |

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../features/templates/data/layout.dart';
 import 'daos/inspections_dao.dart';
 import 'daos/item_results_dao.dart';
+import 'daos/photos_dao.dart';
 import 'daos/properties_dao.dart';
 import 'tables/inspections.dart';
 import 'tables/item_results.dart';
@@ -19,7 +20,7 @@ part 'database.g.dart';
 
 @DriftDatabase(
   tables: [Properties, Inspections, ItemResults, Photos, Signatures],
-  daos: [PropertiesDao, InspectionsDao, ItemResultsDao],
+  daos: [PropertiesDao, InspectionsDao, ItemResultsDao, PhotosDao],
 )
 class AppDatabase extends _$AppDatabase {
   /// 連線由呼叫端決定：App 用裝置上的檔案，測試用記憶體資料庫。
